@@ -1,0 +1,187 @@
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000; /* Ensure modals appear above other content */
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto; /* Enable scroll if content overflows */
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: #fff;
+  margin: auto;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  position: relative;
+}
+
+.close {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  font-size: 25px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Year Filters */
+#year-filters {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+
+.year-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Student Table */
+#student-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+#student-table th, #student-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+#student-table th {
+  background-color: #f2f2f2;
+}
+
+.student-checkbox {
+  cursor: pointer;
+}
+
+/* Search Bar */
+#student-search {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
+/* Assign Proctor Button */
+#assign-proctor {
+  margin-top: 20px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Highlighting for Drag Selection */
+.highlight {
+  background-color: #e0f7fa;
+}
+
+/* Settings Menu */
+.settings {
+  position: absolute; /* Change to absolute positioning */
+  top: 10px; /* Adjust as needed */
+  right: 10px; /* Adjust as needed */
+  cursor: pointer;
+}
+
+
+.settings-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  background-color: #fff;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  border-radius: 4px;
+  z-index: 1;
+}
+
+.settings-menu button {
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.settings-menu button:hover {
+  background-color: #f1f1f1;
+}
+
+/* General Button Styles */
+.button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.sidebar {
+  width: 200px;
+  background-color: #f4f4f4;
+  padding: 20px;
+  position: fixed;
+  height: 100%;
+  overflow-y: auto;
+}
+
+#student-search {
+  margin: 10px 0;
+  padding: 5px;
+  width: 100%;
+}
+
+#students-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+#students-list li {
+  cursor: pointer;
+  padding: 8px;
+  margin-bottom: 5px;
+  background-color: #ffffff;
+  border-radius: 5px;
+}
+
+#students-list li:hover {
+  background-color: #009b81;
+}
+
+#search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+#student-search {
+  padding-right: 30px; /* Space for the search icon */
+}
+
+#search-icon {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}

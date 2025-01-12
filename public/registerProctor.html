@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proctor Registration</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="JS/registerProctor.js"></script>
+</head>
+<body>
+
+    <!-- Registration Form Container -->
+    <div class="form register-form" id="proctor-register">
+        
+        <!-- Form Header -->
+        <h2 class="heading">Proctor Registration</h2>
+        
+        <!-- Registration Form -->
+        <form id="proctorRegistrationForm" action="/registerProctor" method="post" onsubmit="validateProctorForm(event)">
+            
+            <!-- Name Input -->
+            <label for="proctorName" class="form-label">Name</label>
+            <input type="text" id="proctorName" name="name" class="input" placeholder="Name" required />
+            
+            <!-- Email Input -->
+            <label for="proctorEmail" class="form-label">College Email</label>
+            <input type="email" id="proctorEmail" name="email" class="input" placeholder="College Mail (someone@jerusalem.ac.in)" required />
+            
+            <!-- Designation Input -->
+            <label for="proctorDesignation" class="form-label">Designation</label>
+            <input type="text" id="proctorDesignation" name="designation" class="input" placeholder="Designation" required />
+            
+            <!-- Staff ID Input -->
+            <label for="staffId" class="form-label">Staff ID</label>
+            <input type="text" id="staffId" name="staffId" class="input" placeholder="Staff ID (4 digits)" required />
+            
+            <!-- Password Input -->
+            <label for="proctorPassword" class="form-label">Create Password</label>
+            <input type="password" id="proctorPassword" name="pswd" class="input" placeholder="Create Password" required />
+            
+            <!-- Confirm Password Input -->
+            <label for="proctorConfirmPassword" class="form-label">Confirm Password</label>
+            <input type="password" id="proctorConfirmPassword" class="input" placeholder="Confirm Password" required />
+            
+            <!-- Submit Button -->
+            <button type="submit" class="button">Register</button>
+            
+            <!-- Login Link -->
+            <p class="login-link">Already Registered? <a href="/login" class="link">Login here</a></p>
+        </form>
+    </div>
+
+</body>
+</html>

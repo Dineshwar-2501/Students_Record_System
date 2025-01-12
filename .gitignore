@@ -1,0 +1,19 @@
+# Ignore node_modules directory
+node_modules/
+
+# Ignore all .env files
+*.env
+
+# Ignore JSON files
+*.json
+
+# Ignore log files
+*.log
+
+# Ignore specific directories
+/Sql/
+# /build/
+
+# Ignore temporary system files
+# .DS_Store
+# Thumbs.db

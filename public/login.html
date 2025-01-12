@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
+    <!-- <script src="JS/login.js"></script> -->
+    <title>Login</title>
+    <style>
+        /* Style for password visibility icon */
+        .password-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+
+        .checkbox-wrapper-46 input[type="checkbox"] {
+            display: none;
+            visibility: hidden;
+        }
+
+        .checkbox-wrapper-46 .cbx {
+            margin: auto;
+            -webkit-user-select: none;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .checkbox-wrapper-46 .cbx span {
+            display: inline-block;
+            vertical-align: middle;
+            transform: translate3d(0, 0, 0);
+        }
+
+        .checkbox-wrapper-46 .cbx span:first-child {
+            position: relative;
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            transform: scale(1);
+            vertical-align: middle;
+            border: 1px solid #9098a9;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-wrapper-46 .cbx span:first-child svg {
+            position: absolute;
+            top: 3px;
+            left: 2px;
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 16px;
+            stroke-dashoffset: 16px;
+            transition: all 0.3s ease;
+            transition-delay: 0.1s;
+            transform: translate3d(0, 0, 0);
+        }
+
+        .checkbox-wrapper-46 .cbx span:first-child:before {
+            content: "";
+            width: 100%;
+            height: 100%;
+            background: #506eec;
+            display: block;
+            transform: scale(0);
+            opacity: 1;
+            border-radius: 50%;
+        }
+
+        .checkbox-wrapper-46 .cbx span:last-child {
+            padding-left: 8px;
+        }
+
+        .checkbox-wrapper-46 .cbx:hover span:first-child {
+            border-color: #506eec;
+        }
+
+        .checkbox-wrapper-46 .inp-cbx:checked + .cbx span:first-child {
+            background: #506eec;
+            border-color: #506eec;
+            animation: wave-46 0.4s ease;
+        }
+
+        .checkbox-wrapper-46 .inp-cbx:checked + .cbx span:first-child svg {
+            stroke-dashoffset: 0;
+        }
+
+        .checkbox-wrapper-46 .inp-cbx:checked + .cbx span:first-child:before {
+            transform: scale(3.5);
+            opacity: 0;
+            transition: all 0.6s ease;
+        }
+
+        @keyframes wave-46 {
+            50% {
+                transform: scale(0.9);
+            }
+        }
+
+      /* Add this to your CSS file or within <style> tags */
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    background-color: #e0e0e0; /* Default background */
+    color: black; /* Default text color */
+}
+
+button.selected {
+    background-color: #506eec; /* Bright color when selected */
+    color: white; /* Text color when selected */
+}
+
+button.deselected {
+    background-color: #c0c0c0; /* Dim color when deselected */
+    color: black; /* Text color when deselected */
+}
+
+
+    </style>
+</head>
+<body>
+
+    <!-- Main Container for Login Page -->
+    <div class="main">
+        <h1 class="heading">Login</h1>
+        
+        <!-- Login Form -->
+        <div class="login">
+            <form id="loginForm" class="form" method="get">
+                
+                <!-- Email Input -->
+                <label for="email" class="form-label"></label>
+                <input type="email" name="email" class="input" id="email" placeholder="Email" required autocomplete="email">
+                
+                <!-- Password Input with Visibility Toggle -->
+                <div class="password-container">
+                    <label for="password" class="form-label"></label>
+                    <input type="password" name="pswd" class="input" id="password" placeholder="Password" required autocomplete="current-password">
+                    <span id="togglePassword" class="toggle-password">👁️</span>
+                </div>
+                
+                <!-- Remember Me Checkbox -->
+                <div class="checkbox-wrapper-46">
+                    <input type="checkbox" id="rememberMe" class="inp-cbx">
+                    <label for="rememberMe" class="cbx">
+                        <span>
+                            <svg viewBox="0 0 12 10" height="10px" width="12px">
+                                <polyline points="1.5 6 4.5 9 10.5 1"></polyline>
+                            </svg>
+                        </span>
+                        <span>Remember Me</span>
+                    </label>
+                </div>
+                
+                <!-- Role Selection Buttons -->
+                <div id="roleSelection" class="side-by-side">
+                    <button type="button" class="button" id="proctorButton" value="proctor">Proctor</button>
+                    <button type="button" class="button" id="studentButton" value="student">Student</button>
+                </div>
+                <input type="hidden" name="role" id="selectedRole" value="">
+                
+                
+                <!-- Submit Button -->
+                <button class="button" type="submit">Login</button>
+            </form>
+        </div>
+        
+        <!-- Forgot Password Link -->
+        <a href="/forgotpassword" class="button">Forgot Password</a>
+        
+        <!-- Signup Section -->
+        <div class="signup">
+            <label class="form-label">Sign Up</label>
+            <div class="signup-buttons">
+                <a class="button" href="/registerProctor">Proctor</a>
+                <a class="button" href="/registerStudent">Student</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Password Visibility Toggle -->
+    <script>
+ // JavaScript for Password Visibility Toggle and Remember Me functionality
+document.addEventListener('DOMContentLoaded', () => {
+    const proctorButton = document.getElementById('proctorButton');
+    const studentButton = document.getElementById('studentButton');
+    const selectedRoleInput = document.getElementById('selectedRole');
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const rememberMeCheckbox = document.getElementById('rememberMe');
+    const emailInput = document.getElementById('email');
+
+    // Set initial state
+    studentButton.classList.add('deselected'); // Make the student button dim by default
+
+    // Load saved email and remember me status
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    const rememberMeChecked = localStorage.getItem('rememberMeChecked');
+    if (savedEmail && rememberMeChecked === 'true') {
+        emailInput.value = savedEmail;
+        rememberMeCheckbox.checked = true;
+    }
+
+    // Role selection toggle
+    proctorButton.addEventListener('click', () => {
+        proctorButton.classList.add('selected');
+        proctorButton.classList.remove('deselected'); // Remove dim class
+        studentButton.classList.remove('selected');
+        studentButton.classList.add('deselected'); // Add dim class
+        selectedRoleInput.value = 'proctor'; // Set the selected role
+    });
+
+    studentButton.addEventListener('click', () => {
+        studentButton.classList.add('selected');
+        studentButton.classList.remove('deselected'); // Remove dim class
+        proctorButton.classList.remove('selected');
+        proctorButton.classList.add('deselected'); // Add dim class
+        selectedRoleInput.value = 'student'; // Set the selected role
+    });
+
+    // Password visibility toggle
+    togglePassword.addEventListener('click', () => {
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            togglePassword.textContent = '🙈'; // Change icon to closed-eye
+        } else {
+            passwordInput.type = 'password';
+            togglePassword.textContent = '👁️'; // Change icon to open-eye
+        }
+    });
+
+    // Handle form submission
+    document.getElementById('loginForm').addEventListener('submit', async (event) => {
+        event.preventDefault(); // Prevent default form submission
+
+        const email = emailInput.value;
+        const password = passwordInput.value;
+
+        // Store email if "Remember Me" is checked
+        if (rememberMeCheckbox.checked) {
+            localStorage.setItem('rememberedEmail', email);
+            localStorage.setItem('rememberMeChecked', 'true');
+        } else {
+            localStorage.removeItem('rememberedEmail');
+            localStorage.removeItem('rememberMeChecked');
+        }
+
+        // Fetch request for login
+        try {
+            const response = await fetch('http://localhost:5000/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email,          // shorthand for email: email
+                    pswd: password, // shorthand for password: password
+                    role: selectedRoleInput.value,
+                    rememberMe: rememberMeCheckbox.checked,
+                }),
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Redirect to the dashboard page based on role
+                window.location.href = data.redirectUrl;
+            } else {
+                alert(data.message); // Display error message if login fails
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert("An error occurred during login. Please try again.");
+        }
+    });
+});
+
+    </script>
+</body>
+</html>

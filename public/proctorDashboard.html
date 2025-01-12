@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/proctorDashboard.css">
+    <title>Proctor Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="JS/proctorDashboard.js" defer></script>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <h1>Proctor Dashboard</h1>
+        <p>Welcome, Proctor!</p>
+        <div class="settings" id="settings-icon">⚙️</div>
+        <div class="settings-menu" id="settings-menu">
+            <button onclick="window.location.href='/logout'">Logout</button>
+            <button id="import-student-button">Import Student Data</button>
+            <button id="import-proctor-button">Import Proctor Data</button>
+            <button id="select-year-button">Select by Year</button>
+        </div>
+    </header>
+
+    <!-- Year Selection Modal -->
+    <div id="year-selection-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-year-modal">&times;</span>
+            <h2>Select Year</h2>
+            <div id="year-filters">
+                <button class="year-button" id="btn-1styear">1st Year</button>
+                <button class="year-button" id="btn-2ndyear">2nd Year</button>
+                <button class="year-button" id="btn-3rdyear">3rd Year</button>
+                <button class="year-button" id="btn-4thyear">4th Year</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student List Modal -->
+    <div id="student-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-student-modal">&times;</span>
+            <h2 id="student-year-heading">Student List</h2>
+            <input type="text" id="student-search" placeholder="Search by Registration ID">
+            <table id="student-table">
+                <thead>
+                    <tr>
+                        <th>Select</th>
+                        <th>Registration ID</th>
+                        <th>Name</th>
+                    </tr>
+                </thead>
+                <tbody id="student-list"></tbody>
+            </table>
+            <button id="assign-proctor" class="button">Assign Proctor</button>
+        </div>
+    </div>
+
+    <!-- Modal for Importing Student Data -->
+    <div id="import-student-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-student-modal-import">&times;</span>
+            <h2>Import Student Data</h2>
+            <form id="importStudentForm" enctype="multipart/form-data" method="POST" action="/importStudentData">
+                <label for="studentFileInput">Upload Student CSV or Excel File:</label>
+                <input type="file" id="studentFileInput" name="studentFile" accept=".csv, .xlsx" required>
+                <button type="submit" class="button">Import Student Data</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Importing Proctor Data -->
+    <div id="import-proctor-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-proctor-modal">&times;</span>
+            <h2>Import Proctor Data</h2>
+            <form id="importProctorForm" enctype="multipart/form-data" method="POST" action="/importProctorData">
+                <label for="proctorFileInput">Upload Proctor CSV or Excel File:</label>
+                <input type="file" id="proctorFileInput" name="proctorFile" accept=".csv, .xlsx" required>
+                <button type="submit" class="button">Import Proctor Data</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manage Students Section
+    <section id="manage-students">
+        <h2>Manage Students</h2>
+        <button class="button" onclick="window.location.href='/assigned.html'">Open Interface</button>
+    </section> -->
+
+    <div id="students-menu" class="sidebar">
+        <h2 id="proctor-name"></h2>
+        <p id="proctor-designation">Students</p>
+        <div id="search-container">
+            <input type="text" id="sidebar-student-search" placeholder="Search by student name..." />
+            <button id="search-icon" title="search-icon">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+        <ul id="students-list"></ul>
+    </div>
+
+    <!-- Workspace for Selected Student -->
+    <div id="student-workspace" class="workspace">
+        <!-- Table content for selected student will go here -->
+    </div>
+</body>
+</html>
