@@ -11,9 +11,9 @@ node_modules/
 *.log
 
 # Ignore specific directories
-/Sql/
+public/Sql/
 # /build/
-
+uploads/
 # Ignore temporary system files
 # .DS_Store
 # Thumbs.db

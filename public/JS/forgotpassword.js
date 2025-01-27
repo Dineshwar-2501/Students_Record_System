@@ -1,26 +1,57 @@
+// Event Listener for Forgot Password Form Submission
 document.getElementById('forgotPasswordForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('email').value;
-  const role = document.getElementById('role').value;
+    e.preventDefault(); // Prevent default form submission
 
-  try {
-      const response = await fetch('/forgotpassword', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email, role }),
-      });
+    // Get email and role from form inputs
+    const email = document.getElementById('email').value.trim();
+    const role = document.getElementById('role').value;
 
-      if (response.ok) {
-          const data = await response.json(); // Parse JSON response
-          alert(data.message); // Show alert with the success message
-          window.location.href = '/resetpassword'; // Redirect to reset password page
-      } else {
-          const errorMessage = await response.text(); // Get error message
-          alert(`Error: ${errorMessage}`); // Show alert with error message
-      }
-  } catch (error) {
-      alert('Error: ' + error.message); // Handle any unexpected errors
-  }
+    // Frontend Validation
+    if (!email || !role) {
+        alert('Please fill out both the email and role fields.');
+        return;
+    }
+
+    // Validate email format using regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        alert('Please enter a valid email address.');
+        return;
+    }
+
+    try {
+        // Send POST request to the forgot password endpoint
+        const response = await fetch('/forgotpassword', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, role }), // Send email and role as JSON
+        });
+
+        // Get the message display element
+        const messageElement = document.getElementById('message');
+
+        if (response.ok) {
+            // Parse JSON response and display success message
+            const data = await response.json();
+            messageElement.textContent = data.message;
+            messageElement.style.color = 'green';
+
+            // Redirect to reset password page after a delay
+            setTimeout(() => {
+                window.location.href = '/resetpassword';
+            }, 2000);
+        } else {
+            // Parse and display error message
+            const errorMessage = await response.text();
+            messageElement.textContent = `Error: ${errorMessage}`;
+            messageElement.style.color = 'red';
+        }
+    } catch (error) {
+        // Handle unexpected errors
+        const messageElement = document.getElementById('message');
+        messageElement.textContent = `Error: ${error.message}`;
+        messageElement.style.color = 'red';
+    }
 });

@@ -17,25 +17,31 @@ const mysql12 = require('mysql2/promise'); // Use promise-based MySQL2
 const { sendMail } = require('./utils/email');
 const fs = require('fs');
 const multer = require('multer');
-const csv = require('csv-parser'); // For CSV files
-const xlsx = require('xlsx'); // For Excel files
-
+const csvParser = require('csv-parser');
+const db = require('./config/database');
 
 // Create an Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
 const saltRounds = 10;
 
+
+// Configure Multer for file uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/'); // Ensure this directory exists
+        cb(null, 'uploads/'); // Ensure this folder exists
     },
     filename: (req, file, cb) => {
-        cb(null, file.originalname);
+        cb(null, `${Date.now()}-${file.originalname}`);
     },
 });
 
 const upload = multer({ storage: storage });
+
+// Serve static files (HTML and CSS)
+app.use(express.static(path.join(__dirname, 'public')));
+
+const router = express.Router();
 const proctorRoutes = require('./routes/proctorRoutes');
 app.use(proctorRoutes);
 
@@ -43,9 +49,11 @@ app.use(proctorRoutes);
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(cors());
-
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+});
 // Static files from public folder
-app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Session setup
@@ -58,10 +66,10 @@ app.use(session({
 }));
 
 // Import your database config and connect
-const db = require('./config/database');
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
+//console.log(process.env)
 
 db.getConnection()
     .then(connection => {
@@ -79,8 +87,6 @@ app.get('/registerStudent', (req, res) => res.sendFile(path.join(__dirname, 'pub
 app.get('/registerProctor', (req, res) => res.sendFile(path.join(__dirname, 'public', 'registerProctor.html')));
 app.get('/forgotpassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgotpassword.html')));
 app.get('/resetpassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'resetpassword.html')));
-
-
 app.get('/proctorDashboard', (req, res) => {
     console.log('Accessing Proctor Dashboard. Session Info:', req.session);
     
@@ -91,6 +97,27 @@ app.get('/proctorDashboard', (req, res) => {
         console.log('Unauthorized access attempt to Proctor Dashboard. Redirecting to login.');
         res.redirect('/');
     }
+});
+app.get('/getProctorStudents', async (req, res) => {
+    try {
+        const query = `
+            SELECT proctor_id, regid, name 
+            FROM students
+            ORDER BY proctor_id, regid
+        `;
+
+        // Use `await` to handle promise-based queries
+        const [results] = await db.query(query);
+
+        res.send(results);
+    } catch (err) {
+        console.error('Error fetching proctor and students:', err);
+        res.status(500).send({ message: 'Database query failed.' });
+    }
+});
+
+app.get('/getStudentTableTemplate', (req, res) => {
+    res.json({ subjects: global.tableTemplate || [] });
 });
 
 app.get('/studentDashboard', (req, res) => {
@@ -105,15 +132,15 @@ app.get('/studentDashboard', (req, res) => {
     }
 });
 
-app.get('/getStudentsByYear/:year', async (req, res) => {
-    const year = req.params.year; // Get the year from the URL parameters
-    console.log(`Fetching students for year: ${year}`);
+app.get('/getStudentsByYear/:year_of_study', async (req, res) => {
+    const year_of_study = req.params.year_of_study; // Get the year_of_study from the URL parameters
+    console.log(`Fetching students for year_of_study: ${year_of_study}`);
     try {
         const sql = 'SELECT student_id, regid, name FROM students WHERE year_of_study = ?'; // Ensure 'year_of_study' exists
-        const [rows] = await db.execute(sql, [year]);
+        const [rows] = await db.execute(sql, [year_of_study]);
         res.json(rows); // Return the list of students in JSON format
     } catch (error) {
-        console.error('Error fetching students by year:', error);
+        console.error('Error fetching students by year_of_study:', error);
         res.status(500).json({ message: 'Error fetching students.' });
     }
 });
@@ -214,8 +241,58 @@ app.get('/api/getAssignedStudents', async (req, res) => {
     }
 });
 
+app.get('/getStudentAndSubjects/:studentId', async (req, res) => {
+    const studentId = req.params.studentId;
+
+    try {
+        // Fetch the student's data from the students table
+        const [studentData] = await db.query(
+            'SELECT year_of_study, regid, student_id FROM students WHERE student_id = ?',
+            [studentId]
+        );
+
+        if (studentData.length === 0) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+
+        const studentYear = studentData[0].year_of_study;
+
+        // Validate student year
+        if (!studentYear || studentYear < 1 || studentYear > 4) {
+            return res.status(400).json({ error: 'Invalid or missing year of study for the student.' });
+        }
+
+        // Determine semesters based on student year
+        const semesters = [
+            studentYear * 2 - 1, // Odd semester for the year
+            studentYear * 2      // Even semester for the year
+        ];
+
+        // Fetch subjects based on the calculated semesters
+        const [subjects] = await db.query(
+            'SELECT semester, subject_name, subject_code, credit FROM semester_subjects WHERE semester IN (?)',
+            [semesters]
+        );
+
+        // Return the student and subjects data
+        res.status(200).json({
+            success: true,
+            data: {
+                student: studentData[0],
+                subjects
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching student and subjects:', error);
+        res.status(500).json({ error: 'Failed to fetch student data.' });
+    }
+});
 
 // Check if a student has a proctor
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 
 app.get('/api/check-proctor', async (req, res) => {
     const studentId = req.session.userId; // Assume student ID is stored in session
@@ -458,51 +535,61 @@ app.get('/proctorList', async (req, res) => {
     }
 });
 
-// app.get('/studentListPage', (req, res) => {
-//     res.sendFile(path.join(__dirname, 'public', 'studentList.html'));
-// });
+const rateLimiter = require('express-rate-limit'); // Optional: Rate limiting middleware
 
-// // Student List Route
-// app.get('/studentList', async (req, res) => {
-//     try {
-//         const [students] = await db.execute('SELECT student_id, name FROM students');
-//         res.json(students);
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).send('Server error');
-//     }
-// });
+// Apply rate limiter to the forgot password route
+const forgotPasswordLimiter = rateLimiter({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Limit each IP to 5 requests per windowMs
+    message: 'Too many password reset attempts. Please try again later.',
+});
 
-// Endpoint to get students by year
-// Fetch Students by Year (Using Query Parameter Instead of URL Parameter)
-// Endpoint to get students by year
-
-
-app.post('/forgotpassword', async (req, res) => {
+app.post('/forgotpassword', forgotPasswordLimiter, async (req, res) => {
     const { email, role } = req.body;
+
+    // Validate role
+    if (!['student', 'proctor'].includes(role)) {
+        return res.status(400).send('Invalid role provided');
+    }
+
     const tableName = role === 'proctor' ? 'proctors' : 'students';
 
     try {
+        // Check if user exists
         const [results] = await db.execute(`SELECT * FROM ${tableName} WHERE email = ?`, [email]);
-
         if (results.length === 0) {
             return res.status(404).send('User not found');
         }
 
-        const code = Math.floor(Math.random() * 900000) + 100000; // Generate a 6-digit code
+        // Generate reset code
+        const code = Math.floor(Math.random() * 900000) + 100000; // 6-digit random code
 
-        await db.execute(`UPDATE ${tableName} SET reset_code = ?, reset_code_expiry = NOW() + INTERVAL 15 MINUTE WHERE email = ?`, [code, email]);
-        
-        // Send reset code via email
-        await sendMail(email, 'Password Reset Code', `Your password reset code is ${code}. It will expire in 15 minutes.`);
+        // Update reset code and expiry in the database
+        await db.execute(
+            `UPDATE ${tableName} 
+             SET reset_code = ?, reset_code_expiry = NOW() + INTERVAL 15 MINUTE 
+             WHERE email = ?`,
+            [code, email]
+        );
 
-        return res.json({ message: 'Reset code sent to your email' }); // Respond with a message
-
+        // Send email with reset code
+        try {
+            await sendMail(
+                email,
+                'Password Reset Code',
+                `Your password reset code is ${code}. It will expire in 15 minutes.`
+            );
+            return res.json({ message: 'Reset code sent to your email' });
+        } catch (mailError) {
+            console.error('Error sending reset email:', mailError);
+            return res.status(500).send('Failed to send reset email. Please try again.');
+        }
     } catch (error) {
         console.error('Error in forgot password:', error);
-        res.status(500).send('Server error');
+        return res.status(500).send('Server error');
     }
 });
+
 
 // Handle Reset Password
 app.post('/resetpassword', async (req, res) => {
@@ -557,7 +644,7 @@ app.post('/importStudentData', upload.single('studentFile'), async (req, res) =>
                         // Insert the student into the database
                         await db.execute(
                             'INSERT INTO students (name,email,department,batch,regid,password,year_of_study) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                            [row.name, row.email, row.department,row.batch,row.regid, hashedPassword,row.year]
+                            [row.name, row.email, row.department,row.batch,row.regid, hashedPassword,row.year_of_study]
                         );
                     }
                     res.send('Student data imported successfully.');
@@ -631,8 +718,197 @@ app.post('/importProctorData', upload.single('proctorFile'), async (req, res) =>
     }
 });
 
+// Save academic data for a student
+app.post('/saveStudentAcademics', async (req, res) => {
+    const { studentId, academicData } = req.body;
+
+    if (!studentId || !academicData || academicData.length === 0) {
+        return res.status(400).json({ message: 'Invalid data or missing parameters.' });
+    }
+
+    try {
+        const values = academicData.map(data => [
+            studentId,
+            data.regid,
+            data.subject,
+            data.subject_code,
+            data.credit,
+            data.semester,
+            data.year_of_study,
+            data.attendance_1 || null,
+            data.attendance_2 || null,
+            data.test_1 || null,
+            data.test_2 || null,
+            data.grades || null,
+            data.internal_marks || null,
+        ]);
+
+        const query = `
+            INSERT INTO student_academics 
+            (student_id, regid, subject, subject_code, credit, semester, year_of_study, 
+            attendance_1, attendance_2, test_1, test_2, grades, internal_marks)
+            VALUES ? 
+            ON DUPLICATE KEY UPDATE
+                subject = VALUES(subject),
+                subject_code = VALUES(subject_code),
+                credit = VALUES(credit),
+                semester = VALUES(semester),
+                year_of_study = VALUES(year_of_study),
+                attendance_1 = COALESCE(VALUES(attendance_1), attendance_1),
+                attendance_2 = COALESCE(VALUES(attendance_2), attendance_2),
+                test_1 = COALESCE(VALUES(test_1), test_1),
+                test_2 = COALESCE(VALUES(test_2), test_2),
+                grades = COALESCE(VALUES(grades), grades),
+                internal_marks = COALESCE(VALUES(internal_marks), internal_marks);
+        `;
+
+        const flatValues = values;
+        await db.query(query, [flatValues]);
+
+        res.json({ message: 'Student academic data saved successfully.' });
+    } catch (error) {
+        console.error('Error saving academic data:', error);
+        res.status(500).json({ message: 'Failed to save academic data.' });
+    }
+});
+
+app.post('/uploadMarks', upload.single('marksFile'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded.' });
+    }
+
+    const filePath = req.file.path;  // Path to the uploaded file
+    const marksData = [];
+
+    // Read and parse the CSV file
+    fs.createReadStream(filePath)
+        .pipe(csvParser())
+        .on('data', (row) => {
+            marksData.push({
+                regid: row.regid?.trim(),
+                subject_code: row.subject_code?.trim(),
+                test1: row.test1 ? parseInt(row.test1.trim(), 10) : null,
+                test2: row.test2 ? parseInt(row.test2.trim(), 10) : null,
+                attendance1: row.attendance1 ? parseInt(row.attendance1.trim(), 10) : null,
+                attendance2: row.attendance2 ? parseInt(row.attendance2.trim(), 10) : null,
+                grade: row.grade?.trim(),
+                internal_marks: row.internal_marks ? parseInt(row.internal_marks.trim(), 10) : null,
+                semester: parseInt(row.semester?.trim(), 10),
+            });
+        })
+        .on('end', async () => {
+            console.log('CSV parsing completed:', marksData);
+
+            try {
+                // Insert or update marks in the database
+                const query = `
+                    INSERT INTO marks(regid, subject_code, test1, test2, attendance1, attendance2, grade, internal_marks, semester)
+                    VALUES ?
+                    ON DUPLICATE KEY UPDATE
+                        test1 = VALUES(test1),
+                        test2 = VALUES(test2),
+                        attendance1 = VALUES(attendance1),
+                        attendance2 = VALUES(attendance2),
+                        grade = VALUES(grade),
+                        internal_marks = VALUES(internal_marks)
+                `;
+
+                // Prepare data for bulk insertion into the database
+                const values = marksData.map((row) => [
+                    row.regid,
+                    row.subject_code,
+                    row.test1,
+                    row.test2,
+                    row.attendance1,
+                    row.attendance2,
+                    row.grade,
+                    row.internal_marks,
+                    row.semester,
+                ]);
+
+                // Assuming you have a `db.query` method to interact with your database
+                await db.query(query, [values]);
+
+                // Delete the uploaded file after processing
+                fs.unlinkSync(filePath);
+
+                res.json({ message: 'Marks data uploaded and updated successfully.' });
+            } catch (error) {
+                console.error('Error updating marks data:', error);
+                res.status(500).json({ message: 'Error updating marks data.' });
+            }
+        })
+        .on('error', (error) => {
+            console.error('Error parsing CSV:', error);
+            res.status(500).json({ message: 'Failed to parse CSV file.' });
+        });
+});
+
+app.post('/addSubject', async (req, res) => {
+    const { semester, subject_name, subject_code, credit } = req.body;
+
+    if (!semester || !subject_name || !subject_code || !credit) {
+        return res.status(400).json({ message: 'All fields are required.' });
+    }
+
+    try {
+        await db.query(`
+            INSERT INTO semester_subjects (semester, subject_name, subject_code, credit)
+            VALUES (?, ?, ?, ?)`,
+            [semester, subject_name, subject_code, credit]
+        );
+
+        res.json({ message: 'Subject added successfully.' });
+    } catch (error) {
+        console.error('Error adding subject:', error);
+        res.status(500).json({ message: 'Error adding subject.' });
+    }
+});
+
+app.post('/deleteSubject', async (req, res) => {
+    const { semester, subject_code } = req.body;
+
+    if (!semester || !subject_code) {
+        return res.status(400).json({ message: 'Semester and Subject Code are required.' });
+    }
+
+    try {
+        await db.query(`
+            DELETE FROM semester_subjects
+            WHERE semester = ? AND subject_code = ?`,
+            [semester, subject_code]
+        );
+
+        res.json({ message: 'Subject deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting subject:', error);
+        res.status(500).json({ message: 'Error deleting subject.' });
+    }
+});
+
+app.post('/deleteProctorAssignments', async (req, res) => {
+    try {
+        const proctorId = req.session.userId; // Proctor ID from session
+
+        await db.query(`
+            UPDATE students
+            SET proctor_id = NULL
+            WHERE proctor_id = ?`,
+            [proctorId]
+        );
+
+        res.json({ message: 'Proctor assignments deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting proctor assignments:', error);
+        res.status(500).json({ message: 'Error deleting proctor assignments.' });
+    }
+});
 
 // Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+
+
+

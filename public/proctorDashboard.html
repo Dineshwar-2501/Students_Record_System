@@ -8,8 +8,7 @@
     <title>Proctor Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="JS/proctorDashboard.js" defer></script>
+
 </head>
 <body>
     <!-- Header -->
@@ -22,7 +21,12 @@
             <button id="import-student-button">Import Student Data</button>
             <button id="import-proctor-button">Import Proctor Data</button>
             <button id="select-year-button">Select by Year</button>
+            <button id="upload-marks-button">Upload Marks</button>
+            <button id="add-subject-button">Add Subject</button>
+            <button id="delete-subject-button">Delete Subject</button>
+            <button id="delete-proctor-assignments-button">Delete Proctor Assignments</button>
         </div>
+        
     </header>
 
     <!-- Year Selection Modal -->
@@ -85,27 +89,79 @@
         </div>
     </div>
 
-    <!-- Manage Students Section
-    <section id="manage-students">
-        <h2>Manage Students</h2>
-        <button class="button" onclick="window.location.href='/assigned.html'">Open Interface</button>
-    </section> -->
-
-    <div id="students-menu" class="sidebar">
-        <h2 id="proctor-name"></h2>
-        <p id="proctor-designation">Students</p>
-        <div id="search-container">
-            <input type="text" id="sidebar-student-search" placeholder="Search by student name..." />
-            <button id="search-icon" title="search-icon">
-                <i class="fas fa-search"></i>
-            </button>
+       <div id="uploadModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span id="close-upload-modal" class="close">&times;</span>
+            <h2>Upload Academic Data</h2>
+            <form id="uploadCSVForm" enctype="multipart/form-data" method="POST" action="/uploadMarks">
+                <label for="marksFile">Upload CSV File:</label>
+                <input type="file" id="marksFile" name="marksFile" accept=".csv, .xlsx" required>
+                <button type="submit">Upload</button>
+            </form>
+            
         </div>
-        <ul id="students-list"></ul>
+    </div>
+    
+    <div id="addSubjectModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span id="close-add-subject-modal" class="close">&times;</span>
+            <h2>Add Subject</h2>
+            <form id="addSubjectForm">
+                <label for="semester_id">Semester:</label>
+                <input type="number" id="semester_id" name="semester" required><br>
+                <label for="subject_name">Subject Name:</label>
+                <input type="text" id="subject_name" name="subject_name" required><br>
+                <label for="subject_code">Subject Code:</label>
+                <input type="text" id="subject_code" name="subject_code" required><br>
+                <label for="credits">Credits:</label>
+                <input type="number" id="credits" name="credit" required><br>
+                <button type="submit" class="button">Add Subject</button>
+            </form>
+        </div>
     </div>
 
-    <!-- Workspace for Selected Student -->
-    <div id="student-workspace" class="workspace">
-        <!-- Table content for selected student will go here -->
+    <div id="deleteSubjectModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span id="close-delete-subject-modal" class="close">&times;</span>
+            <h2>Delete Subject</h2>
+            <form id="deleteSubjectForm">
+                <label for="semester_id">Semester:</label>
+                <input type="number" id="semester_id" name="semester" required><br>
+                <label for="subject_code">Subject Code:</label>
+                <input type="text" id="subject_code" name="subject_code" required><br>
+                <button type="submit" class="button">Delete Subject</button>
+            </form>
+        </div>
     </div>
+    
+
+   
+
+<!-- Toggle Button -->
+<button id="toggle-sidebar-btn" class="toggle-sidebar-btn">
+    <i class="fas fa-bars"></i>
+</button>
+
+
+<!-- Sidebar -->
+<div id="students-menu" class="sidebar closed">
+    <h2 id="proctor-name"></h2>
+    <p id="proctor-designation">Students</p>
+    <div id="search-container">
+        <input type="text" id="sidebar-student-search" placeholder="Search by student name..." />
+        <button id="search-icon" title="search-icon">
+            <i class="fas fa-search"></i>
+        </button>
+    </div>
+    <ul id="students-list"></ul>
+</div>
+
+<div id="student-workspace" class="workspace">
+
+
+
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="JS/proctorDashboard.js" defer></script>
 </body>
 </html>
