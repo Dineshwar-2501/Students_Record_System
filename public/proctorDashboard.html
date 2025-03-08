@@ -3,165 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proctor Dashboard</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/proctorDashboard.css">
-    <title>Proctor Dashboard</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
-
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
 </head>
 <body>
-    <!-- Header -->
-    <header>
-        <h1>Proctor Dashboard</h1>
-        <p>Welcome, Proctor!</p>
-        <div class="settings" id="settings-icon">⚙️</div>
-        <div class="settings-menu" id="settings-menu">
-            <button onclick="window.location.href='/logout'">Logout</button>
-            <button id="import-student-button">Import Student Data</button>
-            <button id="import-proctor-button">Import Proctor Data</button>
-            <button id="select-year-button">Select by Year</button>
-            <button id="upload-marks-button">Upload Marks</button>
-            <button id="add-subject-button">Add Subject</button>
-            <button id="delete-subject-button">Delete Subject</button>
-            <button id="delete-proctor-assignments-button">Delete Proctor Assignments</button>
-        </div>
-        
-    </header>
 
-    <!-- Year Selection Modal -->
-    <div id="year-selection-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" id="close-year-modal">&times;</span>
-            <h2>Select Year</h2>
-            <div id="year-filters">
-                <button class="year-button" id="btn-1styear">1st Year</button>
-                <button class="year-button" id="btn-2ndyear">2nd Year</button>
-                <button class="year-button" id="btn-3rdyear">3rd Year</button>
-                <button class="year-button" id="btn-4thyear">4th Year</button>
-            </div>
-        </div>
+
+
+<!-- Sidebar -->
+<div id="sidebar">
+    <div class="proctor-info">
+        <h2 id="proctor-name">Proctor Name</h2>
+        <p id="proctor-designation">Designation</p>
     </div>
 
-    <!-- Student List Modal -->
-    <div id="student-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" id="close-student-modal">&times;</span>
-            <h2 id="student-year-heading">Student List</h2>
-            <input type="text" id="student-search" placeholder="Search by Registration ID">
-            <table id="student-table">
-                <thead>
-                    <tr>
-                        <th>Select</th>
-                        <th>Registration ID</th>
-                        <th>Name</th>
-                    </tr>
-                </thead>
-                <tbody id="student-list"></tbody>
-            </table>
-            <button id="assign-proctor" class="button">Assign Proctor</button>
-        </div>
-    </div>
-
-    <!-- Modal for Importing Student Data -->
-    <div id="import-student-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" id="close-student-modal-import">&times;</span>
-            <h2>Import Student Data</h2>
-            <form id="importStudentForm" enctype="multipart/form-data" method="POST" action="/importStudentData">
-                <label for="studentFileInput">Upload Student CSV or Excel File:</label>
-                <input type="file" id="studentFileInput" name="studentFile" accept=".csv, .xlsx" required>
-                <button type="submit" class="button">Import Student Data</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal for Importing Proctor Data -->
-    <div id="import-proctor-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" id="close-proctor-modal">&times;</span>
-            <h2>Import Proctor Data</h2>
-            <form id="importProctorForm" enctype="multipart/form-data" method="POST" action="/importProctorData">
-                <label for="proctorFileInput">Upload Proctor CSV or Excel File:</label>
-                <input type="file" id="proctorFileInput" name="proctorFile" accept=".csv, .xlsx" required>
-                <button type="submit" class="button">Import Proctor Data</button>
-            </form>
-        </div>
-    </div>
-
-       <div id="uploadModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span id="close-upload-modal" class="close">&times;</span>
-            <h2>Upload Academic Data</h2>
-            <form id="uploadCSVForm" enctype="multipart/form-data" method="POST" action="/uploadMarks">
-                <label for="marksFile">Upload CSV File:</label>
-                <input type="file" id="marksFile" name="marksFile" accept=".csv, .xlsx" required>
-                <button type="submit">Upload</button>
-            </form>
-            
-        </div>
-    </div>
-    
-    <div id="addSubjectModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span id="close-add-subject-modal" class="close">&times;</span>
-            <h2>Add Subject</h2>
-            <form id="addSubjectForm">
-                <label for="semester_id">Semester:</label>
-                <input type="number" id="semester_id" name="semester" required><br>
-                <label for="subject_name">Subject Name:</label>
-                <input type="text" id="subject_name" name="subject_name" required><br>
-                <label for="subject_code">Subject Code:</label>
-                <input type="text" id="subject_code" name="subject_code" required><br>
-                <label for="credits">Credits:</label>
-                <input type="number" id="credits" name="credit" required><br>
-                <button type="submit" class="button">Add Subject</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="deleteSubjectModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span id="close-delete-subject-modal" class="close">&times;</span>
-            <h2>Delete Subject</h2>
-            <form id="deleteSubjectForm">
-                <label for="semester_id">Semester:</label>
-                <input type="number" id="semester_id" name="semester" required><br>
-                <label for="subject_code">Subject Code:</label>
-                <input type="text" id="subject_code" name="subject_code" required><br>
-                <button type="submit" class="button">Delete Subject</button>
-            </form>
-        </div>
-    </div>
     
 
-   
+    <div id="search-container">
+        <input type="text" id="sidebar-student-search" placeholder="Search students...">
+        <ul id="students-list"></ul>
+    </div>
 
-<!-- Toggle Button -->
-<button id="toggle-sidebar-btn" class="toggle-sidebar-btn">
+    <!-- Sidebar Icons at Bottom Left -->
+    <div id="sidebar-icons">
+        <button id="upload-marks-button" class="sidebar-icon" title="Upload Marks">
+            <i class="fas fa-upload"></i>
+        </button>
+        <button id="edit-profile-button" class="sidebar-icon" title="Edit Profile">
+            <i class="fas fa-user-edit"></i>
+        </button>
+        <button onclick="window.location.href='/logout'" class="sidebar-icon" title="Logout">
+            <i class="fas fa-sign-out-alt"></i>
+        </button>
+    </div>
+</div>
+
+
+</div>
+<!-- Sidebar Toggle Button -->
+<button id="sidebar-toggle-btn">
     <i class="fas fa-bars"></i>
 </button>
 
 
-<!-- Sidebar -->
-<div id="students-menu" class="sidebar closed">
-    <h2 id="proctor-name"></h2>
-    <p id="proctor-designation">Students</p>
-    <div id="search-container">
-        <input type="text" id="sidebar-student-search" placeholder="Search by student name..." />
-        <button id="search-icon" title="search-icon">
-            <i class="fas fa-search"></i>
-        </button>
+<!-- Profile Update Modal -->
+<div id="profile-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" id="close-profile-modal">&times;</span>
+        <h2>Edit Profile</h2>
+        <form id="profile-form">
+            <label for="proctor-name-input">Name
+            <input type="text" id="proctor-name-input" name="name"></label>
+            <br>
+            <label for="proctor-email-input">Email
+            <input type="email" id="proctor-email-input" name="email"></label>
+            <br>
+            <label for="proctor-designation-input">Designation
+            <input type="text" id="proctor-designation-input" name="designation"></label>
+            <br>
+            <label for="proctor-phone-input">Phone
+            <input type="text" id="proctor-phone-input" name="phone"></label>
+            <br>
+            <button type="submit">Save Changes</button>
+        </form>
     </div>
-    <ul id="students-list"></ul>
 </div>
 
-<div id="student-workspace" class="workspace">
+ <!-- Main Workspace -->
+<div id="student-workspace">
+    <h2 id="student-info-heading"></h2>
+    <div id="watermark" class="watermark">Click any student to view details</div>
 
+    <div id="semesterTabs" style="display: none;">
+    <ul id="tab-headers">
+        <li class="tab-header" data-tab="1">Semester 1</li>
+        <li class="tab-header" data-tab="2">Semester 2</li>
+        <li class="tab-header" data-tab="3">Semester 3</li>
+        <li class="tab-header" data-tab="4">Semester 4</li>
+        <li class="tab-header" data-tab="5">Semester 5</li>
+        <li class="tab-header" data-tab="6">Semester 6</li>
+        <li class="tab-header" data-tab="7">Semester 7</li>
+        <li class="tab-header" data-tab="8">Semester 8</li>
+        <li class="tab-header" data-tab="achievements">Achievements</li>
+    </ul>
+</div>
+    <!-- Semester Content -->
+    <div id="tab-contents">
+        <div id="tab-1" class="tab-content">Semester 1 content here...</div>
+        <div id="tab-2" class="tab-content">Semester 2 content here...</div>
+        <div id="tab-3" class="tab-content">Semester 3 content here...</div>
+        <div id="tab-4" class="tab-content">Semester 4 content here...</div>
+        <div id="tab-5" class="tab-content">Semester 5 content here...</div>
+        <div id="tab-6" class="tab-content">Semester 6 content here...</div>
+        <div id="tab-7" class="tab-content">Semester 7 content here...</div>
+        <div id="tab-8" class="tab-content">Semester 8 content here...</div>
+        <div id="tab-achievements" class="tab-content">Achievements content here...</div>
+    </div>
+</div>
 
-
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Upload Marks Modal -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <span id="close-upload-modal" style="cursor: pointer;">&times;</span>
+            <h2>Upload Marks</h2>
+            <form id="uploadCSVForm" enctype="multipart/form-data">
+                <input type="file" id="marksFile" name="marksFile" accept=".csv" required>
+                <button type="submit">Upload</button>
+            </form>
+        </div>
+    </div>
     <script src="JS/proctorDashboard.js" defer></script>
 </body>
 </html>

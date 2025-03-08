@@ -1,557 +1,580 @@
-
 $(document).ready(async function () {
-    // Fetch and display proctor's information and assigned students
-    try {
-        const response = await $.get('/getProctorDetails');
-        const { proctorName, designation, students } = response;
+    await loadAssignedStudents();
 
-        // Display the proctor's name and designation
-        $('#proctor-name').text(proctorName);
-        $('#proctor-designation').text(designation);
+    const sidebar = $('#sidebar');
+    const toggleButton = $('#sidebar-toggle-btn');
+    const workspaceToggleButton = $('#toggle-sidebar-btn'); // Ensure single toggle
+    const uploadMarksButton = $('#upload-marks-button');
+    const editProfileButton = $('#edit-profile-button');
+    const profileModal = $('#profile-modal');
+    const closeProfileModal = $('#close-profile-modal');
 
-        // Populate the student list with assigned students
-        students.forEach(student => {
-            $('#students-list').append(`
-                <li data-id="${student.student_id}" class="student-item">
-                    ${student.name}
-                </li>
-            `);
-        });
+    // 📌 Toggle Sidebar when the button is clicked
+    toggleButton.click(function (event) {
+        event.stopPropagation(); // Prevent click from triggering document click event
 
-        // Event listener for clicking a student in the list
-        $('.student-item').on('click', function () {
-            const studentId = $(this).data('id');
-            loadStudentWorkspace(studentId); // Load student details in the workspace
-        });
-
-        // Trigger search on typing in the sidebar search input
-        $('#sidebar-student-search').on('input', searchAssignedStudents);
-
-    } catch (error) {
-        console.error("Error loading proctor and student details:", error);
-    }
-});
-
-// Function to load student details into the workspace
-async function loadStudentWorkspace(studentId) {
-    try {
-        const studentDetails = await $.get(`/getStudentDetails/${studentId}`);
-        $('#student-workspace').empty();
-
-        // Populate the workspace with student details
-        $('#student-workspace').append(`
-            <h3>${studentDetails.name}</h3>
-            <p>Registration ID: ${studentDetails.registrationId}</p>
-            <p>Year: ${studentDetails.year}</p>
-            <p>Grades: ${studentDetails.grades}</p>
-        `);
-    } catch (error) {
-        console.error("Error loading student details:", error);
-    }
-}
-
-// Function to search assigned students by name in the sidebar
-function searchAssignedStudents() {
-    const searchQuery = $('#sidebar-student-search').val().toLowerCase().trim();
-    $('#students-list li').each(function () {
-        const studentName = $(this).text().toLowerCase();
-        $(this).toggle(studentName.includes(searchQuery));
-    });
-}
-
-
-$(document).ready(function () {
-    // Toggle settings menu
-    $('#settings-icon').click(function (e) {
-        e.stopPropagation(); // Prevent event bubbling
-        $('#settings-menu').toggle();
-    });
-
-    // Close settings menu when clicking outside
-    $(document).click(function (event) {
-        if (!$(event.target).closest('#settings-icon').length && !$(event.target).closest('#settings-menu').length) {
-            $('#settings-menu').hide();
-        }
-    });
-
-    // Open Year Selection Modal
-    $('#select-year-button').click(function () {
-        $('#year-selection-modal').show();
-    });
-
-    // Close Year Selection Modal
-    $('#close-year-modal').click(function () {
-        $('#year-selection-modal').hide();
-    });
-
-    // Close Student Modal
-    $('#close-student-modal').click(function () {
-        $('#student-modal').hide();
-    });
-
-    // Close Import Student Modal
-    $('#close-student-modal-import').click(function () {
-        $('#import-student-modal').hide();
-    });
-
-    // Close Import Proctor Modal
-    $('#close-proctor-modal').click(function () {
-        $('#import-proctor-modal').hide();
-    });
-
-    // Open Import Student Modal
-    $('#import-student-button').click(function () {
-        $('#import-student-modal').show();
-    });
-
-    // Open Import Proctor Modal
-    $('#import-proctor-button').click(function () {
-        $('#import-proctor-modal').show();
-    });
-
-    // Year button click events to fetch students
-    $('#btn-1styear').click(() => fetchStudentsByYear('1'));
-    $('#btn-2ndyear').click(() => fetchStudentsByYear('2'));
-    $('#btn-3rdyear').click(() => fetchStudentsByYear('3'));
-    $('#btn-4thyear').click(() => fetchStudentsByYear('4'));
-
-    // Function to fetch students by year
-    function fetchStudentsByYear(year) {
-        $('#year-selection-modal').hide();
-        $('#student-year-heading').text("Student List");
-        $('#student-search').val(''); // Clear previous search
-        $('#student-modal').show();
-
-        $.ajax({
-            type: 'GET',
-            url: `/getStudentsByYear/${year}`, // Updated to match server route
-            success: function (data) {
-                displayStudents(data);
-            },
-            error: function (xhr) {
-                console.error("Error fetching students:", xhr);
-                console.error("Status:", xhr.status);
-                console.error("Response Text:", xhr.responseText);
-                alert("Failed to fetch students. Please try again.");
-            }
-            
-        });
-    }
-
-    // Function to display students in the table
-    function displayStudents(students) {
-        let studentList = $('#student-list');
-        studentList.empty();
-
-        students.forEach(student => {
-            studentList.append(`
-                <tr>
-                    <td><input type="checkbox" class="student-checkbox" data-id="${student.student_id}"></td>
-                    <td>${student.regid}</td>
-                    <td>${student.name}</td>
-                </tr>
-            `);
-        });
-    }
-
-    // Search functionality to filter students by RegID
-    $('#student-search').on('keyup', function () {
-        let value = $(this).val().toLowerCase();
-        $('#student-list tr').filter(function () {
-            $(this).toggle($(this).find('td:nth-child(2)').text().toLowerCase().indexOf(value) > -1);
-        });
-    });
-
-    // Drag-to-select functionality
-    let isSelecting = false;
-
-    $('#student-table').on('mousedown', 'tr', function (e) {
-        isSelecting = true;
-        toggleCheckbox($(this));
-        e.preventDefault(); // Prevent text selection
-    });
-
-    $('#student-table').on('mouseover', 'tr', function () {
-        if (isSelecting) {
-            toggleCheckbox($(this));
-        }
-    });
-
-    $(document).on('mouseup', function () {
-        isSelecting = false;
-    });
-
-    function toggleCheckbox(row) {
-        let checkbox = row.find('.student-checkbox');
-        let isChecked = checkbox.prop('checked');
-        checkbox.prop('checked', !isChecked);
-        row.toggleClass('highlight', !isChecked);
-    }
-
-    // Assign Proctor button click event
-    $('#assign-proctor').click(function () {
-        let selectedStudents = [];
-        $('.student-checkbox:checked').each(function () {
-            selectedStudents.push($(this).data('id'));
-        });
-    
-        if (selectedStudents.length === 0) {
-            alert("Please select at least one student.");
-            return;
-        }
-    
-        $.ajax({
-            type: 'POST',
-            url: '/assignProctor',
-            contentType: 'application/json',
-            data: JSON.stringify({ students: selectedStudents }), // Only send selected students
-            success: function (response) {
-                alert(response.message);
-                $('#student-modal').hide();
-            },
-            error: function (xhr) {
-                console.error("Error assigning proctor:", xhr);
-                alert("An error occurred while assigning the proctor.");
-            }
-        });
-    });
-    
-
-    // Handle the Proctor Import Form
-    $('#importProctorForm').on('submit', function (event) {
-        event.preventDefault();
-
-        const formData = new FormData(this);
-
-        $.ajax({
-            type: 'POST',
-            url: '/importProctorData',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function () {
-                alert('Proctor data imported successfully.');
-                $('#import-proctor-modal').hide();
-            },
-            error: function (xhr) {
-                try {
-                    const jsonResponse = JSON.parse(xhr.responseText);
-                    alert(jsonResponse.message || 'Error importing proctor data.');
-                } catch (e) {
-                    console.error('Error:', e);
-                    alert('An unexpected error occurred.');
-                }
-            }
-        });
-    });
-
-    // Handle the Student Import Form
-    $('#importStudentForm').on('submit', function (event) {
-        event.preventDefault();
-
-        const formData = new FormData(this);
-
-        $.ajax({
-            type: 'POST',
-            url: '/importStudentData',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function () {
-                alert('Student data imported successfully.');
-                $('#import-student-modal').hide();
-            },
-            error: function (xhr) {
-                try {
-                    const jsonResponse = JSON.parse(xhr.responseText);
-                    alert(jsonResponse.message || 'Error importing student data.');
-                } catch (e) {
-                    console.error('Error:', e);
-                    alert('An unexpected error occurred.');
-                }
-            }
-        });
-    });
-});
-// sidebar
-// Sidebar Toggle Functionality
-document.getElementById("toggle-sidebar-btn").addEventListener("click", function () {
-    const sidebar = document.getElementById("students-menu");
-    sidebar.classList.toggle("closed");
-});
-
-
-async function loadStudentAcademicTable(studentId) {
-    try {
-        // Fetch student and subject data from the server
-        const response = await fetch(`/getStudentAndSubjects/${studentId}`);
-        
-        if (!response.ok) throw new Error('Failed to fetch student data.');
-        
-        const data = await response.json();
-        
-        // Check if the data structure is correct and contains the student and subjects
-        if (data.success && data.data) {
-            const student = data.data.student;
-            const subjects = data.data.subjects;
-
-            // Check if student data is present and has necessary fields
-            if (student && student.year_of_study) {
-                // Generate the academic table
-                generateAcademicTable(student, subjects);
-            } else {
-                console.error("Year of study is missing for the student.");
-            }
+        if (sidebar.hasClass('open')) {
+            sidebar.removeClass('open').addClass('closed').css("left", "-250px");
+            toggleButton.removeClass('hidden');
         } else {
-            console.error("Failed to fetch student or subject data.");
+            sidebar.removeClass('closed').addClass('open').css("left", "0px");
+            toggleButton.addClass('hidden');
         }
-    } catch (error) {
-        console.error('Error loading student academic table:', error);
-        alert('Failed to load student academic table.');
-    }
-}
-
-// Event listener for when a student item is clicked
-$(document).on('click', '.student-item', async function () {
-    const studentId = $(this).data('id');
-    console.log('Student ID:', studentId); 
-
-    // Load the academic table for the selected student
-    await loadStudentAcademicTable(studentId);
-});
-
-// Function to generate academic table
-function generateAcademicTable(student, subjects, semesters) {
-    // Generate the table as before
-    const tableContainer = $('#student-workspace');
-    tableContainer.empty();
-
-    let tableHTML = `
-        <h3>Academic Table for ${student.regid} (Year ${student.year_of_study})</h3>
-        <table id="academicTable">
-            <thead>
-                <tr>
-                    <th>Student ID</th>
-                    <th>Reg ID</th>
-                    <th>Subject</th>
-                    <th>Credit</th>
-                    <th>Subject Code</th>
-                    <th>Semester</th>
-                    <th>Year</th>
-                    <th>Attendance 1</th>
-                    <th>Attendance 2</th>
-                    <th>Test 1</th>
-                    <th>Test 2</th>
-                    <th>Grades</th>
-                    <th>Internal Marks</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    subjects.forEach(subject => {
-        tableHTML += `
-            <tr>
-                <td>${student.student_id}</td>
-                <td>${student.regid}</td>
-                <td>${subject.subject_name}</td>
-                <td>${subject.credit}</td>
-                <td>${subject.subject_code}</td>
-                <td>${subject.semester}</td>
-                <td>${student.year_of_study}</td>
-                <td><input type="number" class="attendance1" placeholder="Enter Attendance 1"></td>
-                <td><input type="number" class="attendance2" placeholder="Enter Attendance 2"></td>
-                <td><input type="number" class="test1" placeholder="Enter Test 1"></td>
-                <td><input type="number" class="test2" placeholder="Enter Test 2"></td>
-                <td><input type="text" class="grades" placeholder="Enter Grade"></td>
-                <td><input type="number" class="internalMarks" placeholder="Enter Internal Marks"></td>
-            </tr>
-        `;
     });
 
-    tableHTML += `
-            </tbody>
-        </table>
-        <button id="applyButton" class="button">Apply</button>
-    `;
+    // 📌 Toggle Sidebar when workspace button clicked
+    workspaceToggleButton.click(function (event) {
+        event.stopPropagation();
 
-    tableContainer.html(tableHTML);
+        if (sidebar.hasClass('open')) {
+            sidebar.removeClass('open').addClass('closed').css("left", "-250px");
+            workspaceToggleButton.removeClass('hidden');
+        } else {
+            sidebar.removeClass('closed').addClass('open').css("left", "0px");
+            workspaceToggleButton.addClass('hidden');
+        }
+    });
 
-    // Attach event listener for Apply button
-    $('#applyButton').click(() => saveStudentAcademicData(student.student_id));
-}
+    // 📌 Close Sidebar when clicking outside, but NOT when clicking inside
+    $(document).click(function (event) {
+        if (!$(event.target).closest("#sidebar, #sidebar-toggle-btn, #toggle-sidebar-btn").length) {
+            sidebar.removeClass("open").addClass("closed").css("left", "-250px");
+            toggleButton.removeClass("hidden");
+            workspaceToggleButton.removeClass("hidden");
+        }
+    });
 
-async function saveStudentAcademicData(studentId) { 
-    const rows = document.querySelectorAll('#academicTable tbody tr');
-    const academicData = [];
+    // 📌 Hide Sidebar When Upload Marks Button Clicked
+    uploadMarksButton.click(function () {
+        sidebar.removeClass('open').addClass('closed').css("left", "-550px");
+        toggleButton.removeClass('hidden');
+        workspaceToggleButton.removeClass('hidden');
+    });
 
-    rows.forEach(row => {
-        const data = {
-            student_id: studentId,
-            regid: row.cells[1].textContent,
-            subject: row.cells[2].textContent,
-            credit: row.cells[3].textContent,
-            subject_code: row.cells[4].textContent,
-            semester: row.cells[5].textContent,
-            year_of_study: row.cells[6].textContent,
-            attendance_1: row.querySelector('.attendance1') ? row.querySelector('.attendance1').value : null,
-            attendance_2: row.querySelector('.attendance2') ? row.querySelector('.attendance2').value : null,
-            test_1: row.querySelector('.test1') ? row.querySelector('.test1').value : null,
-            test_2: row.querySelector('.test2') ? row.querySelector('.test2').value : null,
-            grades: row.querySelector('.grades') ? row.querySelector('.grades').value : null,
-            internal_marks: row.querySelector('.internalMarks') ? row.querySelector('.internalMarks').value : null,
+    // 📌 Hide Sidebar When Edit Profile Button Clicked & Show Modal
+    editProfileButton.click(function () {
+        sidebar.removeClass('open').addClass('closed').css("left", "-250px");
+        toggleButton.removeClass('hidden');
+        workspaceToggleButton.removeClass('hidden');
+        profileModal.show();
+    });
+
+    // 📌 Close Profile Modal and Show Sidebar Again
+    closeProfileModal.click(function () {
+        profileModal.hide();
+        sidebar.removeClass('closed').addClass('open').css("left", "0px");
+    });
+
+    // 📌 Sidebar Search: Filter Assigned Students
+    $('#sidebar-student-search').on('input', function () {
+        const query = $(this).val().toLowerCase().trim();
+        $('.student-item').each(function () {
+            $(this).toggle($(this).text().toLowerCase().includes(query));
+        });
+    });
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const semesterTabs = document.getElementById("semesterTabs"); // Ensure correct ID
+        semesterTabs.style.display = "none"; // Hide initially
+    
+        document.querySelectorAll(".student-list-item").forEach(student => {
+            student.addEventListener("click", function () {
+                // Show semester tabs when a student is clicked
+                semesterTabs.style.display = "block"; 
+    
+                // Highlight the selected student
+                document.querySelectorAll(".student-list-item").forEach(item => item.classList.remove("active"));
+                this.classList.add("active");
+    
+                // Fetch student data and update workspace (implement if not already done)
+                loadStudentData(this.dataset.studentId);
+            });
+        });
+    });
+    document.addEventListener("click", function (event) {
+        if (!event.target.closest(".student-list-item") && !event.target.closest("#semesterTabs")) {
+            document.getElementById("semesterTabs").style.display = "none";
+        }
+    });
+        
+//--------------edit profile-----------------------
+    
+    // 📌 Load Proctor Data when Dashboard Opens
+    async function loadProctorProfile() {
+        try {
+            const response = await fetch('/getProctorProfile');
+            if (!response.ok) throw new Error('Failed to fetch profile');
+            const data = await response.json();
+
+            $('#proctor-name').text(data.name);
+            $('#proctor-designation').text(data.designation);
+
+            // Pre-fill profile modal fields
+            $('#proctor-name-input').val(data.name);
+            $('#proctor-email-input').val(data.email);
+            $('#proctor-designation-input').val(data.designation);
+            $('#proctor-phone-input').val(data.phone);
+        } catch (error) {
+            console.error('Error loading proctor profile:', error);
+        }
+    }
+
+    loadProctorProfile(); // Load profile on page load
+
+    // 📌 Handle Profile Update Submission
+    $('#profile-form').submit(async function (e) {
+        e.preventDefault();
+    
+        const formData = {
+            name: $('#proctor-name-input').val().trim(),
+            email: $('#proctor-email-input').val().trim(),
+            designation: $('#proctor-designation-input').val().trim(),
+            phone: $('#proctor-phone-input').val().trim(),
         };
-
-        // Validate mandatory fields
-        if (!data.subject_code || !data.subject) {
-            alert('Subject and Subject Code are required.');
+    
+        // Basic validation
+        if (!formData.name || !formData.email || !formData.designation || !formData.phone) {
+            alert("Please fill out all fields before submitting.");
             return;
         }
-
-        academicData.push(data);
-    });
-
-    // If no academic data is collected, stop execution
-    if (academicData.length === 0) {
-        alert('No academic data to save.');
-        return;
-    }
-
-    try {
-        const response = await fetch('/saveStudentAcademics', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentId, academicData }),
-        });
-
-        // Log the response for debugging purposes
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.message || 'Failed to save academic data.');
+    
+        try {
+            const response = await fetch('/updateProctorProfile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+    
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || "Update failed");
+    
+            alert(result.message || 'Profile updated successfully.');
+            $('#profile-modal').hide();
+            loadProctorProfile(); // Reload profile data
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            alert('Failed to update profile. Please try again.');
         }
+    });
+    
+//--------------upload -----------------------------
+document.getElementById('upload-marks-button').addEventListener('click', function () {
+    console.log("Opening modal..."); // Debugging
+    document.getElementById('uploadModal').style.display = 'block';
 
-        alert(result.message || 'Data saved successfully.');
-    } catch (error) {
-        console.error('Error saving academic data:', error);
-        alert('Failed to save academic data.');
+
+});
+
+document.getElementById('close-upload-modal').addEventListener('click', function () {
+    document.getElementById('uploadModal').style.display = 'none';
+});
+window.addEventListener('click', function (event) {
+    const modal = document.getElementById('uploadModal');
+    if (event.target === modal) {
+        modal.style.display = 'none';
     }
-}
-
-// Attach click listener for dynamic student items
-document.addEventListener('click', event => {
-    if (event.target.classList.contains('student-item')) {
-        const studentId = event.target.dataset.id;
-        loadStudentAcademicTable(studentId);
-    }
 });
 
-// Show Add Subject Modal
-$('#add-subject-button').click(() => {
-    $('#addSubjectModal').show();
-});
-
-// Close Modal
-$('#close-add-subject-modal').click(() => {
-    $('#addSubjectModal').hide();
-});
-
-// Handle Add Subject Form Submission
-$('#addSubjectForm').on('submit', function (event) {
+document.getElementById('uploadCSVForm').addEventListener('submit', function (event) {
     event.preventDefault();
-    const formData = $(this).serialize();
+    
+    const fileInput = document.getElementById('marksFile');
+    if (!fileInput.files.length) return  alert("Please select a CSV file before uploading.");
+     
 
-    $.post('/addSubject', formData)
-        .done(response => {
-            alert(response.message || 'Subject added successfully.');
-            $('#addSubjectModal').hide();
-        })
-        .fail(() => alert('Error adding subject.'));
-});
-// Show Delete Subject Modal
-$('#delete-subject-button').click(() => {
-    $('#deleteSubjectModal').show();
-});
+    const formData = new FormData();
+    formData.append("marksFile", fileInput.files[0]); // Ensure the key matches the backend
 
-// Close Modal
-$('#close-delete-subject-modal').click(() => {
-    $('#deleteSubjectModal').hide();
-});
-
-// Handle Delete Subject Form Submission
-$('#deleteSubjectForm').on('submit', function (event) {
-    event.preventDefault();
-    const formData = $(this).serialize();
-
-    $.post('/deleteSubject', formData)
-        .done(response => {
-            alert(response.message || 'Subject deleted successfully.');
-            $('#deleteSubjectModal').hide();
-        })
-        .fail(() => alert('Error deleting subject.'));
-});
-
-// Handle Delete Proctor Assignments
-$('#delete-proctor-assignments-button').click(() => {
     $.ajax({
         type: 'POST',
-        url: '/deleteProctorAssignments',
+        url: '/uploadMarks',
+        data: formData,
+        processData: false,
+        contentType: false,
         success: function (response) {
-            alert(response.message || 'Proctor assignments deleted successfully.');
+            alert(response.message || "Marks uploaded successfully!"); 
+            location.reload(); // 🔹 Refresh the page after success
         },
-        error: function () {
-            alert('Error deleting proctor assignments.');
-        },
-    });
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Modal References
-    const uploadModal = document.getElementById('uploadModal');
-    const closeUploadModal = document.getElementById('close-upload-modal');
-    const uploadMarksButton = document.getElementById('upload-marks-button');
-
-    // Open Modal
-    uploadMarksButton.addEventListener('click', () => {
-        uploadModal.style.display = 'block';
-    });
-
-    // Close Modal
-    closeUploadModal.addEventListener('click', () => {
-        uploadModal.style.display = 'none';
-    });
-
-    // Close Modal on Outside Click
-    window.addEventListener('click', (event) => {
-        if (event.target === uploadModal) {
-            uploadModal.style.display = 'none';
+        error: function (xhr) {
+            alert(xhr.responseText || "Error uploading file.");
         }
     });
 });
-    // Handle File Upload Form Submission
-    document.getElementById('uploadCSVForm').addEventListener('submit', function (event) {
-        event.preventDefault();
-    
-        const formData = new FormData(this); // Automatically binds form inputs
-    
-        fetch('/uploadMarks', {
-            method: 'POST',
-            body: formData,
-        })
-            .then(async (response) => {
-                if (response.ok) {
-                    const result = await response.json();
-                    alert(result.message || 'Marks data uploaded successfully.');
-                    uploadModal.style.display = 'none'; // Close modal on success
-                } else {
-                    const errorText = await response.text();
-                    console.error('Server response:', errorText);
-                    alert('Failed to upload marks data. Please try again.');
-                }
-            })
-            .catch((error) => {
-                console.error('Error uploading file:', error);
-                alert('An unexpected error occurred.');
+
+
+    // 📌 Load Assigned Students for Proctor
+    async function loadAssignedStudents() {
+        try {
+            const response = await fetch('/getAssignedStudents');
+            const { proctorName, designation, students } = await response.json();
+
+            $('#proctor-name').text(proctorName);
+            $('#proctor-designation').text(designation);
+            const studentList = $('#students-list');
+            studentList.empty();
+            students.forEach(student => {
+                studentList.append(`
+                    <li data-id="${student.student_id}" class="student-item">
+                        ${student.name} (${student.regid})
+                    </li>
+                `);
             });
-  
+        } catch (error) {
+            console.error('Error loading assigned students:', error);
+        }
+    }
+    document.querySelectorAll(".student-item").forEach(student => {
+        student.addEventListener("click", async function () {
+            const studentId = this.dataset.studentId;
+            const semester = document.getElementById("selectedSemester").value;
+    
+            try {
+                const response = await fetch(`/getGpaCgpa?studentId=${studentId}&semester=${semester}`);
+                const data = await response.json();
+    
+                document.getElementById("gpaDisplay").textContent = `GPA: ${data.gpa}`;
+                document.getElementById("cgpaDisplay").textContent = `CGPA: ${data.cgpa}`;
+    
+                // Hide watermark and show student data
+                document.getElementById("watermark").style.display = "none";
+                document.getElementById("studentData").style.display = "block";
+    
+            } catch (error) {
+                console.error("Error fetching GPA/CGPA:", error);
+            }
         });
-  
+    });
+    
+    // 📌 Load Student Data When Sidebar Student Clicked
+    $(document).on('click', '.student-item', function () {
+        const studentId = $(this).data('id');
+        loadStudentWorkspace(studentId);
+
+        // 📌 Hide Sidebar & Expand Workspace
+        sidebar.removeClass('open').addClass('closed').css("left", "-250px");
+        workspaceToggleButton.removeClass('hidden');
+    });
+
+    loadAssignedStudents();
+});;
+    
+
+function resetWorkspace() {
+    document.getElementById("studentData").style.display = "none";
+    document.getElementById("watermark").style.display = "block";
+}
+
+    // ─── FUNCTION: LOAD STUDENT WORKSPACE ─────────────────
+    async function loadStudentWorkspace(studentId) {
+        try {
+            const response = await fetch(`/getStudentAcademicRecord/${studentId}`);
+            const { student, subjects } = await response.json();
+    
+            if (!student || !subjects) {
+                throw new Error("Invalid student data received.");
+            }
+    
+            const workspace = $('#student-workspace');
+            workspace.empty();
+    
+            // 📌 Student Header
+            workspace.append(`
+                <div id="student-header">
+                    <h3>${student.name} (${student.regid})</h3>
+                </div>
+            `);
+    
+            // 📌 Create Semester Tabs (1-8) + Achievements
+            let tabHtml = `<ul id="tab-headers" class="tab-container">`;
+            for (let sem = 1; sem <= 8; sem++) {
+                tabHtml += `<li class="tab-header" data-tab="${sem}">Semester ${sem}</li>`;
+            }
+            tabHtml += `<li class="tab-header" data-tab="achievements">Achievements</li></ul>`;
+            workspace.append(tabHtml);
+    
+            workspace.append('<div id="tab-contents"></div>');
+    
+            // 📌 Create Tab Content for Each Semester
+            for (let sem = 1; sem <= 8; sem++) {
+                $('#tab-contents').append(`<div class="tab-content" id="tab-${sem}" style="display: none;" data-student-id="${studentId}"></div>`);
+            }
+            $('#tab-contents').append(`<div class="tab-content" id="tab-achievements" style="display: none;"></div>`);
+    
+            // 📌 Populate Each Semester Tab with Subjects
+            for (let sem = 1; sem <= 8; sem++) {
+                let semSubjects = subjects.filter(s => s.semester == sem);
+                console.log(`📌 Semester ${sem} Subjects:`, semSubjects);
+    
+                if (semSubjects.length === 0) {
+                    $(`#tab-${sem}`).append(`<p class="no-data">No data available for Semester ${sem}.</p>`);
+                    continue;
+                }
+    
+                let tableHtml = `<table class="academic-table">
+                    <thead>
+                        <tr>
+                            <th>Subject Name</th>
+                            <th>Credit</th>
+                            <th>Subject Code</th>
+                            <th>Attendance 1</th>
+                            <th>Attendance 2</th>
+                            <th>Test 1</th>
+                            <th>Test 2</th>
+                            <th>Grade</th>
+                            <th>Internal Marks</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+    
+                semSubjects.forEach(sub => {
+                    tableHtml += `
+                        <tr data-subject-code="${sub.subject_code}">
+                            <td>${sub.subject}</td>
+                            <td>${sub.credit}</td>
+                            <td>${sub.subject_code}</td>
+                            <td contenteditable="true" class="edit-attendance1">${sub.attendance1 || ''}</td>
+                            <td contenteditable="true" class="edit-attendance2">${sub.attendance2 || ''}</td>
+                            <td contenteditable="true" class="edit-test1">${sub.test1 || ''}</td>
+                            <td contenteditable="true" class="edit-test2">${sub.test2 || ''}</td>
+                            <td contenteditable="true" class="edit-grade">${sub.grades || ''}</td>
+                            <td contenteditable="true" class="edit-internal">${sub.internal_marks || ''}</td>
+                        </tr>`;
+                });
+    
+                tableHtml += `</tbody></table>
+                <div class="gpa-cgpa">
+                    <p>GPA: <span class="gpa-value" data-sem="${sem}">--</span></p>
+                    <p>CGPA: <span class="cgpa-value" data-sem="${sem}">--</span></p>
+                    <button class="update-marks-btn" data-sem="${sem}">Apply Updates</button>
+                </div>`;
+    
+                // 📌 Ensure the Tab Exists Before Updating
+                const tabElement = $(`#tab-${sem}`);
+                if (tabElement.length) {
+                    tabElement.empty().append(tableHtml);
+                    console.log(`✅ Updated #tab-${sem} successfully.`);
+                } else {
+                    console.error(`❌ ERROR: #tab-${sem} does not exist.`);
+                }
+            }
+    
+            // 📌 Handle Tab Switching
+            $('.tab-header').click(function () {
+                const selectedTab = $(this).data('tab');
+                $('.tab-content').hide();
+                $(`#tab-${selectedTab}`).fadeIn(200);
+                $('.tab-header').removeClass('active');
+                $(this).addClass('active');
+    
+                // 📌 Load Achievements When Clicked
+                if (selectedTab === 'achievements') {
+                    loadAchievements(studentId);
+                }
+            });
+    
+            // 📌 Default to Semester 1 (Auto Click)
+            $('.tab-header[data-tab="1"]').trigger('click');
+    
+        } catch (error) {
+            console.error('❌ Error loading student academic record:', error);
+            alert('Failed to load student academic record.');
+        }
+    }
+    
+    
+    // ─── FUNCTION: SAVE SEMESTER MARKS ─────────────────
+
+// 📌 Update Marks & Refresh GPA/CGPA
+async function saveSemesterMarks(studentId, semester) {
+    const rows = $(`#tab-${semester} table.academic-table tbody tr`);
+    const updates = [];
+
+    rows.each(function () {
+        const subject_code = $(this).data('subject-code');
+        const attendance1 = $(this).find('.edit-attendance1').text().trim() || "0";
+        const attendance2 = $(this).find('.edit-attendance2').text().trim() || "0";
+        const test1 = $(this).find('.edit-test1').text().trim() || "0";
+        const test2 = $(this).find('.edit-test2').text().trim() || "0";
+        const grade = $(this).find('.edit-grade').text().trim().toUpperCase() || "U";
+        const internal = $(this).find('.edit-internal').text().trim() || "0";
+
+        updates.push({ subject_code, attendance1, attendance2, test1, test2, grade, internal });
+    });
+
+    try {
+        // 🔹 Update Marks
+        const updateResponse = await fetch('/updateStudentMarks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentId, semester, updates })
+        });
+
+        if (!updateResponse.ok) throw new Error('Failed to update marks');
+
+        // 🔹 Fetch Updated GPA/CGPA
+        const gpaResponse = await fetch(`/getGpaCgpa?studentId=${studentId}&semester=${semester}`);
+        if (!gpaResponse.ok) throw new Error('Failed to fetch GPA/CGPA');
+
+        const { gpa, cgpa } = await gpaResponse.json();
+
+        // 🔹 Ensure numerical values before updating UI
+        const formattedGpa = isNaN(parseFloat(gpa)) ? "0.00" : parseFloat(gpa).toFixed(2);
+        const formattedCgpa = isNaN(parseFloat(cgpa)) ? "0.00" : parseFloat(cgpa).toFixed(2);
+
+        // 🔹 Update the UI
+        $(`.gpa-value[data-sem="${semester}"]`).text(formattedGpa);
+        $('.cgpa-value').text(formattedCgpa);
+
+        alert("Marks updated successfully! GPA & CGPA recalculated.");
+    } catch (error) {
+        console.error("Error updating marks:", error);
+        alert("Failed to update marks. Please try again.");
+    }
+}
+
+
+//  Attach Click Event to "Apply Updates" Button
+$(document).off('click', '.update-marks-btn').on('click', '.update-marks-btn', function () {
+    const sem = $(this).data('sem');
+    const studentId = $(this).closest('.tab-content').data('student-id');
+    saveSemesterMarks(studentId, sem);
+});
+
+async function loadStudentGpaCgpa(studentId, semester) {
+    try {
+        const response = await fetch(`/getGpaCgpa?studentId=${studentId}&semester=${semester}`);
+        if (!response.ok) throw new Error('Failed to fetch GPA/CGPA');
+
+        const { gpa, cgpa } = await response.json();
+        
+        // 🔹 Ensure numerical values before updating UI
+        const formattedGpa = isNaN(parseFloat(gpa)) ? "0.00" : parseFloat(gpa).toFixed(2);
+        const formattedCgpa = isNaN(parseFloat(cgpa)) ? "0.00" : parseFloat(cgpa).toFixed(2);
+
+        $(`.gpa-value[data-sem="${semester}"]`).text(formattedGpa);
+        $('.cgpa-value').text(formattedCgpa);
+    } catch (error) {
+        console.error("Error loading GPA/CGPA:", error);
+    }
+}
+
+
+// 📌 Call this inside `loadStudentWorkspace()`
+for (let sem = 1; sem <= 8; sem++) {
+    loadStudentGpaCgpa(studentId, sem);
+}
+
+
+
+document.getElementById("applyUpdatesBtn").addEventListener("click", async function() {
+    const studentId = document.getElementById("studentId").value;
+    const semester = document.getElementById("semester").value;
+    const updates = collectUpdatedData(); // Function that gathers updated data
+
+    const response = await fetch('/updateStudentMarks', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId, semester, updates })
+    });
+
+    const result = await response.json();
+    alert(result.message);
+
+    // 🔹 Fetch & Update GPA/CGPA
+    fetchUpdatedGpaCgpa(studentId, semester);
+});
+
+    // ─── FUNCTION: LOAD ACHIEVEMENTS ─────────────────
+    async function loadAchievements(studentId) {
+        try {
+            const response = await fetch(`/getStudentAchievements/${studentId}`);
+            const achievements = await response.json();
+            let achHtml = `<ul class="achievement-list">`;
+            achievements.forEach(ach => {
+                achHtml += `<li>${ach.title} - <a href="/downloadAchievement/${ach.id}" target="_blank">Download</a></li>`;
+            });
+            achHtml += `</ul>`;
+            $('#tab-achievements').html(achHtml);
+        } catch (error) {
+            console.error('Error loading achievements:', error);
+        }
+    }
+    $(document).ready(function () {
+        $(".tab-header").click(function () {
+            // Remove 'active' class from all tabs & hide all content
+            $(".tab-header").removeClass("active");
+            $(".tab-content").hide();
+    
+            // Add 'active' class to the clicked tab
+            $(this).addClass("active");
+    
+            // Get tab ID & show relevant content
+            const tabId = $(this).data("tab");
+            $(`#tab-${tabId}`).show();
+        });
+    
+        // 📌 Show Semester 1 by default
+        $(".tab-header:first").addClass("active");
+        $("#tab-1").show();
+    });
+    document.addEventListener("DOMContentLoaded", function () {
+        const tabs = document.querySelectorAll(".tab-header");
+        const tabContents = document.getElementById("tab-contents");
+    
+        tabs.forEach(tab => {
+            tab.addEventListener("click", function () {
+                const tabId = this.getAttribute("data-tab");
+    
+                // Remove 'active' class from all tabs
+                tabs.forEach(t => t.classList.remove("active"));
+                this.classList.add("active");
+    
+                // Fetch and display the relevant semester data
+                loadSemesterData(tabId);
+            });
+        });
+    
+        function loadSemesterData(semester) {
+            tabContents.innerHTML = `<p>Loading Semester ${semester} data...</p>`;
+    
+            fetch(`/getStudentAcademicRecord/${selectedStudentId}`) // Replace with the actual student ID
+                .then(response => response.json())
+                .then(data => {
+                    const subjects = data.subjects.filter(subject => subject.semester == semester);
+                    if (subjects.length === 0) {
+                        tabContents.innerHTML = `<p>No records found for Semester ${semester}.</p>`;
+                    } else {
+                        let table = `<table border="1">
+                            <tr>
+                                <th>Subject</th>
+                                <th>Attendance 1</th>
+                                <th>Attendance 2</th>
+                                <th>Test 1</th>
+                                <th>Test 2</th>
+                                <th>Grades</th>
+                                <th>Internal Marks</th>
+                            </tr>`;
+    
+                        subjects.forEach(subject => {
+                            table += `<tr>
+                                <td>${subject.subject_code}</td>
+                                <td>${subject.attendance1}</td>
+                                <td>${subject.attendance2}</td>
+                                <td>${subject.test1}</td>
+                                <td>${subject.test2}</td>
+                                <td>${subject.grades}</td>
+                                <td>${subject.internal_marks}</td>
+                            </tr>`;
+                        });
+    
+                        table += `</table>`;
+                        tabContents.innerHTML = table;
+                    }
+                })
+                .catch(() => {
+                    tabContents.innerHTML = `<p>Error loading data. Please try again.</p>`;
+                });
+        }
+    });
+    

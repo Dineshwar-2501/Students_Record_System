@@ -1,11 +1,16 @@
-name,email,password,staffid,designation
-JohnDoe,john@jerusalemengg.ac.in,Dinesh,1011,Manager
-JaneSmith,jane@jerusalemengg.ac.in,Dinesh,1012,Developer
-SamJohnson,sam@jerusalemengg.ac.in,Dinesh,1013,Tester
-LisaRay,lisa@jerusalemengg.ac.in,Dinesh,1014,Analyst
-MichaelClark,michale@jerusalemengg.ac.in,Dinesh,1015,HR
-NinaBrown,nina@jerusalemengg.ac.in,Dinesh,1016,Designer
-PaulWhite,paul@jerusalemengg.ac.in,Dinesh,1017,Team Lead
-SarahBlack,sarah@jerusalemengg.ac.in,Dinesh,1018,Engineer
-DavidGreen,david@jerusalemengg.ac.in,Dinesh,1019,Consultant
-LindaBlue,linda@jerusalemengg.ac.in,Dinesh,1020,Support
+name,email,password,designation,phone_number,department
+John Smith,johnsmith@jerusalemengg.ac.in,Dinesh,Assistant Professor,9940542435,CSE
+Emma Johnson,emmajohnson@jerusalemengg.ac.in,Dinesh,Associate Professor,9940542435,CSE
+Liam Brown,liambrown@jerusalemengg.ac.in,Dinesh,Professor,9940542435,CSE
+Olivia Wilson,oliviawilson@jerusalemengg.ac.in,Dinesh,Assistant Professor,9940542435,CSE
+Noah Miller,noahmiller@jerusalemengg.ac.in,Dinesh,Associate Professor,9940542435,CSE
+Sophia Davis,sophiadavis@jerusalemengg.ac.in,Dinesh,Professor,9940542435,ECE
+Mason Garcia,masongarcia@jerusalemengg.ac.in,Dinesh,Assistant Professor,9940542435,ECE
+Ava Martinez,avamartinez@jerusalemengg.ac.in,Dinesh,Associate Professor,9940542435,ECE
+Lucas Rodriguez,lucasrodriguez@jerusalemengg.ac.in,Dinesh,Professor,9940542435,ECE
+Isabella Hernandez,isabellahernandez@jerusalemengg.ac.in,Dinesh,Assistant Professor,9940542435,ECE
+Ethan Young,ethanyoung@jerusalemengg.ac.in,Dinesh,Associate Professor,9940542435,MECH
+Mia Allen,miaallen@jerusalemengg.ac.in,Dinesh,Professor,9940542435,MECH
+James Scott,jamesscott@jerusalemengg.ac.in,Dinesh,Assistant Professor,9940542435,MECH
+Benjamin Green,benjamingreen@jerusalemengg.ac.in,Dinesh,Associate Professor,9940542435,MECH
+Harper Adams,harperadams@jerusalemengg.ac.in,Dinesh,Professor,9940542435,MECH

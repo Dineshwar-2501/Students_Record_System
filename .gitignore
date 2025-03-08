@@ -1,5 +1,6 @@
 # Ignore node_modules directory
 node_modules/
+academic-progress/
 
 # Ignore all .env files
 *.env
