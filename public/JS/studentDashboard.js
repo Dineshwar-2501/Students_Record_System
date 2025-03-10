@@ -12,6 +12,19 @@ document.addEventListener("DOMContentLoaded", async function () {
         console.error("Error loading session data:", error);
     }
 });
+$(document).on("click", "#upload-achievement-btn", function () {
+    $("#achievement-modal").fadeIn();
+});
+
+$(document).on("click", ".close-modal", function () {
+    $("#achievement-modal").fadeOut();
+});
+
+$(window).click(function(event) {
+    if ($(event.target).is("#achievement-modal")) {
+        $('#achievement-modal').fadeOut();
+    }
+});
 
 async function loadStudentWorkspace(studentId) {
     try {
@@ -47,15 +60,19 @@ async function loadStudentWorkspace(studentId) {
 
         $('#tab-contents').append(`
             <div class="tab-content" id="tab-achievements" style="display: none; position: relative;">
+            
+
                 <button id="upload-achievement-btn" class="upload-btn">Upload Achievement</button>
                 <div id="achievement-modal" class="modal" style="display: none;">
                     <div class="modal-content">
                         <span class="close-modal">&times;</span>
                         <h3>Upload Achievement</h3>
+                        <input type="text" id="achievement-title" placeholder="Enter Achievement Title" />
                         <input type="file" id="achievement-file" />
                         <button id="submit-achievement">Submit</button>
                     </div>
                 </div>
+                <ul id="achievement-list" class="achievement-list"></ul>
             </div>
         `);
 
@@ -106,7 +123,12 @@ async function loadStudentWorkspace(studentId) {
             </div>`;
 
             $(`#tab-${sem}`).html(tableHtml);
-            $(".gpa-value[data-sem='" + sem + "']").text(calculateCGPA(subjects, sem));
+            const gpaCgpaResponse = await fetch(`/getGpaCgpa?studentId=${studentId}&semester=${sem}`);
+            const { gpa, cgpa } = await gpaCgpaResponse.json();
+            $(".gpa-value[data-sem='" + sem + "']").text(gpa || '--');
+            $(".cgpa-value[data-sem='" + sem + "']").text(cgpa || '--');
+            
+            
         }
 
         // 📌 Handle Tab Switching
@@ -142,61 +164,54 @@ async function loadStudentWorkspace(studentId) {
 
         $(document).on("click", "#submit-achievement", async function () {
             const fileInput = document.getElementById('achievement-file');
+            const titleInput = document.getElementById('achievement-title').value.trim();
+        
+            if (!titleInput) {
+                alert("Please enter a title.");
+                return;
+            }
+        
             if (fileInput.files.length === 0) {
                 alert("Please select a file to upload.");
                 return;
             }
-
+        
             const formData = new FormData();
             formData.append("file", fileInput.files[0]);
+            formData.append("title", titleInput); // ✅ Now sending the title
             formData.append("student_id", studentId);
-
+        
             try {
                 const response = await fetch('/uploadAchievement', {
                     method: 'POST',
                     body: formData
                 });
+        
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error("Upload failed:", errorText);
+                    throw new Error("Failed to upload achievement.");
+                }
+        
                 const result = await response.json();
                 if (result.success) {
                     alert("Achievement uploaded successfully!");
                     $("#achievement-modal").fadeOut();
                     loadAchievements(studentId);
                 } else {
-                    alert("Failed to upload achievement.");
+                    alert(result.message || "Failed to upload achievement.");
                 }
             } catch (error) {
-                console.error("Error uploading achievement:", error);
+                console.error("❌ Error uploading achievement:", error);
                 alert("Error uploading achievement.");
             }
         });
+        
 
     } catch (error) {
         console.error('❌ Error loading student academic record:', error);
         alert('Failed to load student academic record.');
     }
-}
-
-// 📌 Function to Get Grade Point
-function getGradePoint(grade) {
-    const gradePoints = {
-        'A+': 10, 'A': 9, 'B+': 8, 'B': 7, 'C+': 6, 'C': 5, 'D': 4, 'F': 0
-    };
-    return gradePoints[grade] || 0;
-}
-
-// 📌 Function to Calculate CGPA
-function calculateCGPA(subjects, currentSem) {
-    let totalCredits = 0, totalGradePoints = 0;
-    
-    subjects.forEach(sub => {
-        if (sub.semester <= currentSem && sub.grades && sub.credit) {
-            let gradePoint = getGradePoint(sub.grades);
-            totalCredits += sub.credit;
-            totalGradePoints += gradePoint * sub.credit;
-        }
-    });
-
-    return totalCredits > 0 ? (totalGradePoints / totalCredits).toFixed(2) : '--';
 }
 
 // 📌 Load Achievements
@@ -206,23 +221,48 @@ async function loadAchievements(studentId) {
         if (!response.ok) throw new Error("Failed to fetch achievements");
 
         const achievements = await response.json();
-        let achHtml = `<ul class="achievement-list">`;
 
-        achievements.forEach(ach => {
-            achHtml += `<li>${ach.title} - <a href="/downloadAchievement/${ach.id}" target="_blank">Download</a></li>`;
-        });
+        let achHtml = `<button id="upload-achievement-btn" class="upload-btn">Upload Achievement</button>`;
 
-        achHtml += `</ul>`;
+        if (achievements.length === 0) {
+            achHtml += '<p class="no-data">No achievements uploaded yet.</p>';
+        } else {
+            achHtml += `<ul class="achievement-list">`;
+            achievements.forEach(ach => {
+                achHtml += `
+                    <li>
+                        <span>${ach.title}</span>
+                        <img src="/downloadAchievement/${ach.id}" alt="${ach.title}" class="achievement-image" />
+                        <iframe src="https://drive.google.com/file/d/1vKN8dpkDid4acRwbh4XkMtO1a45sC5cN/view?usp=drive_link&embedded=true" width="100%" height="500px"></iframe> 
+                        <a href="/downloadAchievement/${ach.id}" target="_blank" class="download-btn">Download</a>
+                    </li>`;
+            });
+            achHtml += `</ul>`;
+        }
+
+        // ✅ Append the button & achievements
         $('#tab-achievements').html(achHtml);
 
     } catch (error) {
         console.error('Error loading achievements:', error);
     }
 }
+
+
+
 $('#submit-achievement').click(async function () {
     const fileInput = document.getElementById('achievement-file');
     const titleInput = document.getElementById('achievement-title');
+    const response = await fetch('/api/session'); 
+    const data = await response.json();
+    const studentId = data.userId;
 
+    if (!studentId) {
+        alert("Student ID is not set. Please log in again.");
+        return;
+    }
+
+   
     if (!fileInput.files.length || titleInput.value.trim() === "") {
         alert("Please enter a title and select a file.");
         return;
@@ -230,7 +270,7 @@ $('#submit-achievement').click(async function () {
 
     const formData = new FormData();
     formData.append("file", fileInput.files[0]);
-    formData.append("student_id", studentId); // Ensure `studentId` is defined
+    formData.append("student_id", studentId);
     formData.append("title", titleInput.value.trim());
 
     try {
@@ -239,18 +279,29 @@ $('#submit-achievement').click(async function () {
             body: formData
         });
 
-        const result = await response.json();
-        if (result.success) {
-            alert("Achievement uploaded successfully!");
-            $('#achievement-modal').fadeOut();
-            loadAchievements(studentId); // Refresh achievement list
-        } else {
-            alert("Upload failed: " + result.message);
+        const textResponse = await response.text();
+        console.log("Raw Response:", textResponse);
+
+        try {
+            const result = JSON.parse(textResponse);
+
+            if (result.success) {
+                alert("Achievement uploaded successfully!");
+                $('#achievement-modal').fadeOut();
+                loadAchievements(studentId);
+            } else {
+                alert("Upload failed: " + result.message);
+            }
+        } catch (jsonError) {
+            console.error("JSON Parse Error:", jsonError);
+            alert("Unexpected response from server.");
         }
+
     } catch (error) {
         console.error("Error uploading achievement:", error);
         alert("An error occurred while uploading.");
     }
 });
+
 
 

@@ -22,20 +22,29 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const saltRounds = 10;
 const studentRoutes = require("./routes/StudentRoutes");
+const rateLimiter = require('express-rate-limit'); 
+const updateGpaCgpa = require("./utils/updateGpaCgpa");
+const proctorRoutes = require('./routes/proctorRoutes');
+
+
+
 if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
 }
 
 // Configure Multer for file uploads
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
+    destination: "uploads/",
     filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`);
-    },
+        const fileExt = path.extname(file.originalname); // Get file extension
+        const safeTitle = req.body.title 
+            ? req.body.title.replace(/[^a-zA-Z0-9-_]/g, "_") // Sanitize title
+            : `file_${Date.now()}`; // Default if title missing
+        
+        const filename = `${safeTitle}${fileExt}`; // Format filename
+        cb(null, filename);
+    }
 });
-
 const fileFilter = (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'text/csv'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -45,6 +54,11 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
+const forgotPasswordLimiter = rateLimiter({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Limit each IP to 5 requests per windowMs
+    message: 'Too many password reset attempts. Please try again later.',
+});
 
 const upload = multer({
     storage: storage,
@@ -61,14 +75,8 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/", studentRoutes); // Use student routes
 app.use("/uploads", express.static("uploads"));
-
-
-
-// Load Routes After Middleware
-const proctorRoutes = require('./routes/proctorRoutes');
 app.use(proctorRoutes);
 
-// Global Error Handling Middleware
 app.use((err, req, res, next) => {
     console.error('Server error:', err);
     res.status(500).json({ message: 'Internal server error' });
@@ -149,26 +157,6 @@ app.get('/adminDashboard', (req, res) => {
         res.redirect('/');
     }
 });
-app.get('/getProctorStudents', async (req, res) => {
-    try {
-        const query = `
-            SELECT proctor_id, regid, name 
-            FROM students
-            ORDER BY proctor_id, regid
-        `;
-        const [results] = await db.query(query);
-
-        res.send(results);
-    } catch (err) {
-        console.error('Error fetching proctor and students:', err);
-        res.status(500).send({ message: 'Database query failed.' });
-    }
-});
-
-app.get('/getStudentTableTemplate', (req, res) => {
-    res.json({ subjects: global.tableTemplate || [] });
-});
-
 app.get('/studentDashboard', (req, res) => {
     console.log('Accessing Student Dashboard. Session Info:', req.session);
 
@@ -181,180 +169,8 @@ app.get('/studentDashboard', (req, res) => {
     }
 });
 
-app.get('/getProctorDetails', async (req, res) => {
-    try {
-        const proctorId = req.session.userId; // Retrieve from session
-        const [proctor] = await db.execute('SELECT name, designation FROM proctors WHERE proctor_id = ?', [proctorId]);
-        const [students] = await db.execute('SELECT student_id, name FROM students WHERE proctor_id = ?', [proctorId]);
-        
-        if (proctor[0]) {
-            res.json({
-                proctorName: proctor[0].name,
-                designation: proctor[0].designation,
-                students
-            });
-        } else {
-            res.status(404).json({ message: "Proctor not found" });
-        }
-    } catch (error) {
-        console.error("Error retrieving proctor details:", error);
-        res.status(500).json({ message: "An error occurred while fetching proctor details" });
-    }
-});
+// ─────────────────────────────────AUTHENTICATION───────────────────────────────────────────────────
 
-app.get('/getStudentDetails/:id', async (req, res) => {
-    try {
-        const studentId = req.params.id;
-        const [student] = await db.execute('SELECT * FROM students WHERE student_id = ?', [studentId]);
-        if (student[0]) {
-            res.json(student[0]);
-        } else {
-            res.status(404).json({ message: "Student not found" });
-        }
-    } catch (error) {
-        console.error("Error retrieving student details:", error);
-        res.status(500).json({ message: "An error occurred while fetching student details" });
-    }
-});
-
-
-// Endpoint to get assigned students (Existing)
-
-
-app.get('/getStudentAndSubjects/:studentId', async (req, res) => {
-    const studentId = req.params.studentId;
-
-    try {
-        // Fetch the student's data from the students table
-        const [studentData] = await db.query(
-            'SELECT year_of_study, regid, student_id FROM students WHERE student_id = ?',
-            [studentId]
-        );
-
-        if (studentData.length === 0) {
-            return res.status(404).json({ error: 'Student not found' });
-        }
-
-        const studentYear = studentData[0].year_of_study;
-
-        // Validate student year
-        if (!studentYear || studentYear < 1 || studentYear > 4) {
-            return res.status(400).json({ error: 'Invalid or missing year of study for the student.' });
-        }
-
-        // Determine semesters based on student year
-        const semesters = [
-            studentYear * 2 - 1, // Odd semester for the year
-            studentYear * 2      // Even semester for the year
-        ];
-
-        // Fetch subjects based on the calculated semesters
-        const [subjects] = await db.query(
-            'SELECT semester, subject_name, subject_code, credit FROM semester_subjects WHERE semester IN (?)',
-            [semesters]
-        );
-
-        // Return the student and subjects data
-        res.status(200).json({
-            success: true,
-            data: {
-                student: studentData[0],
-                subjects
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching student and subjects:', error);
-        res.status(500).json({ error: 'Failed to fetch student data.' });
-    }
-});
-
-
-
-
-app.get('/api/check-proctor', async (req, res) => {
-    const studentId = req.session.userId; // Assume student ID is stored in session
-    if (!studentId) {
-        return res.status(401).json({ message: 'Unauthorized' });
-    }
-
-    const query = 'SELECT proctor_id FROM students WHERE student_id = ?';
-    try {
-        const [results] = await db.execute(query, [studentId]);
-        const hasProctor = results.length > 0 && results[0].proctor_id !== null;
-        res.json({ hasProctor });
-    } catch (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ message: 'Database error', error: err });
-    }
-});
-// Hidden Button|| Don't need This
-app.post('/api/select-proctor', async (req, res) => {
-    const studentId = req.session.userId; // Assume student ID is stored in session
-    const { proctorId } = req.body;
-    console.log("Student ID:", studentId);
-    console.log("Proctor ID:", proctorId);
-    if (!studentId || !proctorId) {
-        return res.status(400).json({ success: false, message: 'Bad Request: Missing student or proctor ID.' });
-    }
-
-    try {
-        // Check if the student already has a proctor assigned
-        const [existingProctor] = await db.execute(
-            'SELECT proctor_id FROM students WHERE student_id = ?', 
-            [studentId]
-        );
-
-        if (existingProctor.length > 0 && existingProctor[0].proctor_id) {
-            return res.json({ success: false, message: 'Proctor already assigned.' });
-        }
-
-        // Update the student's proctor_id
-        const [results] = await db.execute(
-            'UPDATE students SET proctor_id = ? WHERE student_id = ?', 
-            [proctorId, studentId]
-        );
-
-        if (results.affectedRows > 0) {
-            res.json({ success: true, message: 'Proctor selected successfully.' });
-        } else {
-            res.status(404).json({ success: false, message: 'Student not found or no changes made.' });
-        }
-    } catch (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ message: 'Database error', error: err });
-    }
-});
-
-// Name of student  and proctor acquired
-app.get('/api/student-dashboard-info', async (req, res) => {
-    const studentId = req.session.userId;
-
-    if (!studentId) {
-        return res.status(401).json({ message: 'Unauthorized' });
-    }
-
-    try {
-        const [results] = await db.execute(
-            `SELECT students.name AS studentName, proctors.name AS proctorName 
-             FROM students 
-             LEFT JOIN proctors ON students.proctor_id = proctors.proctor_id 
-             WHERE students.student_id = ?`, 
-            [studentId]
-        );
-
-        if (results.length > 0) {
-            const { studentName, proctorName } = results[0];
-            res.json({ studentName, proctorName });
-        } else {
-            res.status(404).json({ message: 'Student or proctor not found' });
-        }
-    } catch (error) {
-        console.error('Error fetching dashboard info:', error);
-        res.status(500).json({ message: 'Database error' });
-    }
-});
-
-// Logout Route
 app.get('/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {
@@ -364,10 +180,6 @@ app.get('/logout', (req, res) => {
         res.redirect('/login');
     });
 });
-
-//POST
-
-// Handle student registration
 app.post('/registerStudent', async (req, res) => {
     try {
         console.log("🔥 Received Student Registration Data:", req.body); // Debugging log
@@ -401,9 +213,6 @@ app.post('/registerStudent', async (req, res) => {
         res.status(500).json({ message: "Error registering student." });
     }
 });
-
-
-// Handle Proctor registration
 app.post('/registerProctor', async (req, res) => {
     try {
         console.log("🔥 Received Proctor Registration Data:", req.body); // Debugging log
@@ -437,8 +246,6 @@ app.post('/registerProctor', async (req, res) => {
         res.status(500).json({ message: "Error registering proctor." });
     }
 });
-
-
 app.post('/login', async (req, res) => {
     const { email, pswd, role, rememberMe } = req.body;
     console.log('Login attempt:', { email, role });
@@ -544,27 +351,6 @@ app.post('/login', async (req, res) => {
         return res.status(500).json({ message: 'An error occurred, please try again.' });
     }
 });
-
-// Proctor List Route
-app.get('/proctorList', async (req, res) => {
-    try {
-        const [proctors] = await db.execute('SELECT proctor_id, name FROM proctors');
-        res.json(proctors);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Server error');
-    }
-});
-
-const rateLimiter = require('express-rate-limit'); // Optional: Rate limiting middleware
-
-// Apply rate limiter to the forgot password route
-const forgotPasswordLimiter = rateLimiter({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // Limit each IP to 5 requests per windowMs
-    message: 'Too many password reset attempts. Please try again later.',
-});
-
 app.post('/forgotpassword', forgotPasswordLimiter, async (req, res) => {
     const { email, role } = req.body;
 
@@ -611,8 +397,6 @@ app.post('/forgotpassword', forgotPasswordLimiter, async (req, res) => {
         return res.status(500).send('Server error');
     }
 });
-
-// Handle Reset Password
 app.post('/resetpassword', async (req, res) => {
     const { email, role, code, newPassword } = req.body;
 
@@ -651,8 +435,8 @@ app.post('/resetpassword', async (req, res) => {
     }
 });
 
-// ───Admin ─────────────────
-// Route for importing student data
+// ─────────────────────────────────────Admin───────────────────────────────────────────────────────────
+
 app.post('/importProctorData', upload.single('proctorFile'), async (req, res) => {
     const filePath = path.join(__dirname, 'uploads', req.file.filename);
 
@@ -704,9 +488,6 @@ app.post('/importProctorData', upload.single('proctorFile'), async (req, res) =>
         res.status(400).send('Invalid file type. Please upload a CSV file for proctors.');
     }
 });
-
-
-// Route for importing proctor data
 app.post('/importStudentData', upload.single('studentFile'), async (req, res) => {
     const filePath = path.join(__dirname, 'uploads', req.file.filename);
 
@@ -764,64 +545,6 @@ app.post('/importStudentData', upload.single('studentFile'), async (req, res) =>
         res.status(400).send('Invalid file type. Please upload a CSV file for students.');
     }
 });
-
-
-// Save academic data for a student
-app.post('/saveStudentAcademics', async (req, res) => {
-    const { studentId, academicData } = req.body;
-
-    if (!studentId || !academicData || academicData.length === 0) {
-        return res.status(400).json({ message: 'Invalid data or missing parameters.' });
-    }
-
-    try {
-        const values = academicData.map(data => [
-            studentId,
-            data.regid,
-            data.subject,
-            data.subject_code,
-            data.credit,
-            data.semester,
-            data.year_of_study,
-            data.attendance_1 || null,
-            data.attendance_2 || null,
-            data.test_1 || null,
-            data.test_2 || null,
-            data.grades || null,
-            data.internal_marks || null,
-        ]);
-
-        const query = `
-            INSERT INTO student_academics 
-            (student_id, regid, subject, subject_code, credit, semester, year_of_study, 
-            attendance_1, attendance_2, test_1, test_2, grades, internal_marks)
-            VALUES ? 
-            ON DUPLICATE KEY UPDATE
-                subject = VALUES(subject),
-                subject_code = VALUES(subject_code),
-                credit = VALUES(credit),
-                semester = VALUES(semester),
-                year_of_study = VALUES(year_of_study),
-                attendance_1 = COALESCE(VALUES(attendance_1), attendance_1),
-                attendance_2 = COALESCE(VALUES(attendance_2), attendance_2),
-                test_1 = COALESCE(VALUES(test_1), test_1),
-                test_2 = COALESCE(VALUES(test_2), test_2),
-                grades = COALESCE(VALUES(grades), grades),
-                internal_marks = COALESCE(VALUES(internal_marks), internal_marks);
-        `;
-
-        const flatValues = values;
-        await db.query(query, [flatValues]);
-
-        res.json({ message: 'Student academic data saved successfully.' });
-    } catch (error) {
-        console.error('Error saving academic data:', error);
-        res.status(500).json({ message: 'Failed to save academic data.' });
-    }
-});
-
-
-
 app.post('/addSubject', async (req, res) => {
     const { semester, subject_name, subject_code, credit, batch } = req.body;
     const department = req.session.department; // Ensure subjects are department-specific
@@ -844,7 +567,6 @@ app.post('/addSubject', async (req, res) => {
         res.status(500).json({ message: 'Error adding subject.' });
     }
 });
-
 app.post('/deleteSubject', async (req, res) => {
     const { semester, subject_code, batch } = req.body;
     const department = req.session.department; // Ensure department-specific deletion
@@ -870,81 +592,6 @@ app.post('/deleteSubject', async (req, res) => {
         res.status(500).json({ message: 'Error deleting subject.' });
     }
 });
-
-
-app.post('/deleteProctorAssignments', async (req, res) => {
-    try {
-        const proctorId = req.session.userId; // Proctor ID from session
-
-        await db.query(`
-            UPDATE students
-            SET proctor_id = NULL
-            WHERE proctor_id = ?`,
-            [proctorId]
-        );
-
-        res.json({ message: 'Proctor assignments deleted successfully.' });
-    } catch (error) {
-        console.error('Error deleting proctor assignments:', error);
-        res.status(500).json({ message: 'Error deleting proctor assignments.' });
-    }
-});
-
-
-// app.post('/updateAllStudentMarks', async (req, res) => {
-//     try {
-//         // 🔹 Step 1: Get all students and subjects from student_academics
-//         const [studentsSubjects] = await db.execute(
-//             "SELECT regid, subject_code FROM student_academics"
-//         );
-
-//         if (studentsSubjects.length === 0) {
-//             return res.status(404).json({ message: "No student academic records found!" });
-//         }
-
-//         let updatedCount = 0;
-
-//         // 🔹 Step 2: Loop through each student & subject
-//         for (const record of studentsSubjects) {
-//             const { regid, subject_code } = record;
-
-//             // 🔹 Step 3: Get marks from marks table
-//             const [marks] = await db.execute(
-//                 "SELECT test1, test2, attendance1, attendance2, grade, internal_marks FROM marks WHERE regid = ? AND subject_code = ?",
-//                 [regid, subject_code]
-//             );
-
-//             // 🔹 Step 4: Update student_academics with marks (or set NULL if not found)
-//             if (marks.length > 0) {
-//                 await db.execute(
-//                     `UPDATE student_academics 
-//                      SET test1 = ?, test2 = ?, attendance1 = ?, attendance2 = ?, grades = ?, internal_marks = ?
-//                      WHERE regid = ? AND subject_code = ?`,
-//                     [marks[0].test1, marks[0].test2, marks[0].attendance1, marks[0].attendance2, marks[0].grade, marks[0].internal_marks, regid, subject_code]
-//                 );
-//                 updatedCount++;
-//             } else {
-//                 // If no marks found, update with NULL values
-//                 await db.execute(
-//                     `UPDATE student_academics 
-//                      SET test1 = NULL, test2 = NULL, attendance1 = NULL, attendance2 = NULL, grades = NULL, internal_marks = NULL
-//                      WHERE regid = ? AND subject_code = ?`,
-//                     [regid, subject_code]
-//                 );
-//             }
-//         }
-
-//         res.status(200).json({ message: `Marks updated for ${updatedCount} records.` });
-
-//     } catch (error) {
-//         console.error("Error updating student marks:", error);
-//         res.status(500).json({ message: "Error updating student marks", error: error.message });
-//     }
-// });
-
-// Get Proctors by Department
-
-
 app.get('/getProctorsByDepartment', async (req, res) => {
     try {
         const adminDepartment = req.session.department; // Get department from session
@@ -966,8 +613,6 @@ app.get('/getProctorsByDepartment', async (req, res) => {
         res.status(500).json({ message: "Error fetching proctors" });
     }
 });
-
-// Get Students by Year
 app.post('/getStudentsByYear', async (req, res) => {
     try {
         const { year } = req.body;
@@ -983,8 +628,6 @@ app.post('/getStudentsByYear', async (req, res) => {
         res.status(500).json({ message: "Error fetching students" });
     }
 });
-
-// Remove Proctor from Assigned Students
 app.post('/removeProctorFromStudents', async (req, res) => {
     try {
         const { proctor_id } = req.body;
@@ -1002,8 +645,6 @@ app.post('/removeProctorFromStudents', async (req, res) => {
         res.status(500).json({ message: "Error unassigning proctor." });
     }
 });
-
-// Get Subjects by Department
 app.post('/getSubjectsByBatch', async (req, res) => {
     try {
         const { batch } = req.body;
@@ -1030,9 +671,6 @@ app.post('/getSubjectsByBatch', async (req, res) => {
         res.status(500).json({ message: "Error fetching subjects" });
     }
 });
-
-
-// Update Subjects in Both Tables
 app.post('/updateSubjects', async (req, res) => {
     try {
         const { subjects, batch } = req.body;
@@ -1068,9 +706,6 @@ app.post('/updateSubjects', async (req, res) => {
         res.status(500).json({ message: "Error updating subjects" });
     }
 });
-
-
-
 app.post('/uploadSubjects', upload.single('subjectFile'), async (req, res) => {
 
     if (!req.file) {
@@ -1138,26 +773,6 @@ app.post('/uploadSubjects', upload.single('subjectFile'), async (req, res) => {
         res.status(500).json({ message: "Error uploading file.", error: error.message });
     }
 });
-
-
-//assign proctor
-app.get('/getProctors', async (req, res) => {
-    try {
-        const [proctors] = await db.execute("SELECT proctor_id, name, designation, department FROM proctors");
-
-        console.log("Fetched Proctors from DB:", proctors);  // Debugging
-
-        if (!Array.isArray(proctors)) {
-            return res.json([]);
-        }
-
-        res.json(proctors);
-    } catch (error) {
-        console.error("Error fetching proctors:", error);
-        res.status(500).json({ message: "Error fetching proctors", error: error.message });
-    }
-});
-
 app.get('/getUniqueBatches', async (req, res) => {
     try {
         const [batches] = await db.execute("SELECT DISTINCT batch FROM students");
@@ -1170,7 +785,6 @@ app.get('/getUniqueBatches', async (req, res) => {
         res.status(500).json({ message: "Error fetching batches" });
     }
 });
-
 app.post('/getStudentsByBatchYear', async (req, res) => {
     try {
         const { batch, year } = req.body;
@@ -1196,8 +810,6 @@ app.post('/getStudentsByBatchYear', async (req, res) => {
         res.status(500).json({ message: "Error fetching students." });
     }
 });
-
-
 app.post('/assignProctor', async (req, res) => {
     try {
         console.log("🔥 Received Assign Proctor Request:", req.body); // Debugging log
@@ -1249,9 +861,6 @@ app.post('/assignProctor', async (req, res) => {
         res.status(500).json({ message: "Error assigning proctor." });
     }
 });
-
-
-
 app.post('/assignSubjectsByDepartment', async (req, res) => {
     try {
         const { batch } = req.body;
@@ -1303,8 +912,6 @@ app.post('/assignSubjectsByDepartment', async (req, res) => {
         res.status(500).json({ message: "Error assigning subjects." });
     }
 });
-
-
 app.get('/getBatchesByDepartment', async (req, res) => {
     try {
         const department = req.session.department;
@@ -1343,10 +950,8 @@ app.get('/getAdminDepartment', async (req, res) => {
         res.status(500).json({ message: "Error fetching admin department." });
     }
 });
+// ─────────────────────────────────── PROCTOR───────────────────────────────────────────────────
 
-
-
-// ─── PROCTOR ─────────────────
 app.get('/getAssignedStudents', async (req, res) => {
     try {
         const proctorId = req.session.proctor_id;
@@ -1362,120 +967,6 @@ app.get('/getAssignedStudents', async (req, res) => {
         res.status(500).json({ message: "Error fetching students." });
     }
 });
-
-// ─── FETCH STUDENT ACADEMIC RECORD ─────────────────
-app.get('/getStudentAcademicRecord/:studentId', async (req, res) => {
-    try {
-        const studentId = req.params.studentId;
-
-        // Fetch student details
-        const [student] = await db.execute(
-            "SELECT name, regid FROM students WHERE student_id = ?", 
-            [studentId]
-        );
-
-        // If student does not exist
-        if (student.length === 0) {
-            return res.status(404).json({ message: "Student not found." });
-        }
-
-        // Fetch academic records
-        const [subjects] = await db.execute(
-            "SELECT * FROM student_academics WHERE student_id = ?", 
-            [studentId]
-        );
-
-        res.json({ 
-            student: student[0], 
-            subjects 
-        });
-
-    } catch (error) {
-        console.error("Error loading academic records:", error);
-        res.status(500).json({ message: "Error loading academic records." });
-    }
-});
-
-
-// ─── UPDATE MARKS & RECALCULATE GPA/CGPA ─────────────────
-app.post('/updateStudentMarks', async (req, res) => {
-    try {
-        const { studentId, semester, updates } = req.body;
-
-        // 🔹 Update Marks in student_academics Table
-        for (const data of updates) {
-            await db.execute(
-                `UPDATE student_academics 
-                 SET attendance1 = ?, attendance2 = ?, test1 = ?, test2 = ?, grades = ?, internal_marks = ?
-                 WHERE student_id = ? AND subject_code = ? AND semester = ?`,
-                [data.attendance1, data.attendance2, data.test1, data.test2, data.grade, data.internal, studentId, data.subject_code, semester]
-            );
-        }
-
-        // 🔹 Recalculate GPA for the Semester
-        const [gpaResult] = await db.execute(`
-            SELECT 
-                SUM(
-                    CASE 
-                        WHEN grades = 'O' THEN 10 * s.credit
-                        WHEN grades = 'A+' THEN 9 * s.credit
-                        WHEN grades = 'A' THEN 8 * s.credit
-                        WHEN grades = 'B+' THEN 7 * s.credit
-                        WHEN grades = 'B' THEN 6 * s.credit
-                        WHEN grades = 'C' THEN 5 * s.credit
-                        ELSE 0
-                    END
-                ) / NULLIF(SUM(CASE WHEN grades != 'U' THEN s.credit ELSE 0 END), 0) AS gpa
-            FROM student_academics sa
-            JOIN semester_subjects s ON sa.subject_code = s.subject_code
-            WHERE sa.student_id = ? AND sa.semester = ?
-            GROUP BY sa.student_id, sa.semester;
-        `, [studentId, semester]);
-
-        const gpa = gpaResult.length > 0 ? gpaResult[0].gpa : 0;
-
-        // 🔹 Recalculate CGPA for the Student
-        const [cgpaResult] = await db.execute(`
-            SELECT SUM(gpa) / COUNT(gpa) AS cgpa
-            FROM (
-                SELECT sa.student_id, sa.semester,
-                    SUM(
-                        CASE 
-                            WHEN grades = 'O' THEN 10 * s.credit
-                            WHEN grades = 'A+' THEN 9 * s.credit
-                            WHEN grades = 'A' THEN 8 * s.credit
-                            WHEN grades = 'B+' THEN 7 * s.credit
-                            WHEN grades = 'B' THEN 6 * s.credit
-                            WHEN grades = 'C' THEN 5 * s.credit
-                            ELSE 0
-                        END
-                    ) / NULLIF(SUM(CASE WHEN grades != 'U' THEN s.credit ELSE 0 END), 0) AS gpa
-                FROM student_academics sa
-                JOIN semester_subjects s ON sa.subject_code = s.subject_code
-                WHERE sa.student_id = ? AND sa.semester <= ?
-                GROUP BY sa.student_id, sa.semester
-            ) AS all_gpas;
-        `, [studentId, semester]);
-
-        const cgpa = cgpaResult.length > 0 ? cgpaResult[0].cgpa : 0;
-
-        // 🔹 Store GPA & CGPA in student_academics Table
-        await db.execute(`
-            UPDATE student_academics 
-            SET gpa = ?, cgpa = ?
-            WHERE student_id = ? AND semester = ?;
-        `, [gpa, cgpa, studentId, semester]);
-
-        res.json({ message: `Marks updated for Semester ${semester}. GPA & CGPA recalculated and stored.` });
-
-    } catch (error) {
-        console.error("Error updating marks & recalculating GPA/CGPA:", error);
-        res.status(500).json({ message: "Error updating marks & GPA/CGPA." });
-    }
-});
-
-
-
 app.get('/getGpaCgpa', async (req, res) => {
     try {
         const { studentId, semester } = req.query;
@@ -1503,45 +994,6 @@ app.get('/getGpaCgpa', async (req, res) => {
         res.status(500).json({ gpa: "--", cgpa: "--" });
     }
 });
-
-
-// ─── FETCH STUDENT ACHIEVEMENTS ─────────────────
-
-router.post("/uploadAchievement", upload.single("file"), async (req, res) => {
-    try {
-        const { student_id, title } = req.body;
-        const filePath = `/uploads/${req.file.filename}`;
-
-        if (!student_id || !title || !req.file) {
-            return res.status(400).json({ success: false, message: "Missing required fields." });
-        }
-
-        // Save to Database
-        const sql = `INSERT INTO student_achievements (student_id, title, file_path) VALUES (?, ?, ?)`;
-        await db.query(sql, [student_id, title, filePath]);
-
-        res.json({ success: true, message: "Achievement uploaded successfully!" });
-    } catch (error) {
-        console.error("Error uploading achievement:", error);
-        res.status(500).json({ success: false, message: "Server error." });
-    }
-});
-
-
-
-// 📌 API to Get Student Achievements
-router.get('/getStudentAchievements/:student_id', async (req, res) => {
-    const { student_id } = req.params;
-    try {
-        const [achievements] = await db.query('SELECT id, title, file_path FROM student_achievements WHERE student_id = ?', [student_id]);
-        res.json(achievements);
-    } catch (error) {
-        console.error("Error fetching achievements:", error);
-        res.status(500).json({ success: false, message: "Database error" });
-    }
-});
-
-// 📌 API to Download Achievement File
 router.get('/downloadAchievement/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -1555,11 +1007,6 @@ router.get('/downloadAchievement/:id', async (req, res) => {
         res.status(500).json({ success: false, message: "Database error" });
     }
 });
-
-
-
-// ─── PROFILE UPDATE ─────────────────
-
 app.get('/getProctorProfile', async (req, res) => {
     try {
         const proctorId = req.session.proctor_id;
@@ -1621,7 +1068,6 @@ app.post('/updateProctorProfile', async (req, res) => {
         res.status(500).json({ message: "Error updating profile." });
     }
 });
-//-----------------------------------CSV UPLOAD--------------
 app.post('/uploadMarks', upload.single('marksFile'), async (req, res) => {
     try {
         if (!req.file) {
@@ -1629,247 +1075,364 @@ app.post('/uploadMarks', upload.single('marksFile'), async (req, res) => {
         }
 
         const uploadPath = req.file.path;
-        console.log(`File uploaded to ${uploadPath}`);
+        console.log(`📂 File uploaded: ${uploadPath}`);
 
-        const results = [];
+        const results = new Map(); // Track updated students & semesters
 
-        // Read and parse CSV using csv-parser
         fs.createReadStream(uploadPath)
             .pipe(csvParser())
-            .on('data', (row) => {
+            .on('data', async (row) => {
                 try {
                     const regid = (row.regid || '').trim();
                     const subject_code = (row.subject_code || '').trim();
                     const semester = parseInt(row.semester) || 0;
-                    const test1 = parseFloat(row.test1) || 0;
-                    const test2 = parseFloat(row.test2) || 0;
-                    const attendance1 = parseFloat(row.attendance1) || 0;
-                    const attendance2 = parseFloat(row.attendance2) || 0;
-                    const grade = (row.grade || '').trim();
-                    const internal_marks = parseInt(row.internal_marks) || 0;
+                    const test1 = row.test1 !== undefined && row.test1 !== '' ? parseFloat(row.test1) : null;
+                    const test2 = row.test2 !== undefined && row.test2 !== '' ? parseFloat(row.test2) : null;
+                    const attendance1 = row.attendance1 !== undefined && row.attendance1 !== '' ? parseFloat(row.attendance1) : null;
+                    const attendance2 = row.attendance2 !== undefined && row.attendance2 !== '' ? parseFloat(row.attendance2) : null;
+                    const grades = (row.grades || '').trim() || null;
+                    const internal_marks = row.internal_marks !== undefined && row.internal_marks !== '' ? parseInt(row.internal_marks) : null;
 
-                    // Validate required fields
                     if (!regid || !subject_code || semester === 0) {
-                        console.log("Skipping row due to missing required fields:", row);
+                        console.warn("⚠️ Skipping row (missing required fields):", row);
                         return;
                     }
 
-                    results.push({ regid, subject_code, semester, test1, test2, attendance1, attendance2, grade, internal_marks });
+                    results.set(regid, semester);
+
+                    // Check if the record already exists in the `marks` table
+                    const [existingRecords] = await db.execute(
+                        `SELECT * FROM marks WHERE regid = ? AND subject_code = ? AND semester = ?`,
+                        [regid, subject_code, semester]
+                    );
+
+                    if (existingRecords.length > 0) {
+                        // **Update only provided fields (partial update)**
+                        const updates = [];
+                        const values = [];
+
+                        if (test1 !== null) {
+                            updates.push("test1 = ?");
+                            values.push(test1);
+                        }
+                        if (test2 !== null) {
+                            updates.push("test2 = ?");
+                            values.push(test2);
+                        }
+                        if (attendance1 !== null) {
+                            updates.push("attendance1 = ?");
+                            values.push(attendance1);
+                        }
+                        if (attendance2 !== null) {
+                            updates.push("attendance2 = ?");
+                            values.push(attendance2);
+                        }
+                        if (grades !== null) {
+                            updates.push("grades = ?");
+                            values.push(grades);
+                        }
+                        if (internal_marks !== null) {
+                            updates.push("internal_marks = ?");
+                            values.push(internal_marks);
+                        }
+
+                        if (updates.length > 0) {
+                            values.push(regid, subject_code, semester);
+                            await db.execute(
+                                `UPDATE marks SET ${updates.join(", ")}
+                                 WHERE regid = ? AND subject_code = ? AND semester = ?`,
+                                values
+                            );
+                            console.log(`✅ Updated ${updates.length} fields for Reg ID: ${regid}, Subject: ${subject_code}`);
+                        }
+                    } else {
+                        // **Insert new record if not exists**
+                        await db.execute(
+                            `INSERT INTO marks (regid, subject_code, test1, test2, attendance1, attendance2, grades, internal_marks, semester)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            [regid, subject_code, test1, test2, attendance1, attendance2, grades, internal_marks, semester]
+                        );
+                        console.log(`✅ Inserted new record for Reg ID: ${regid}, Subject: ${subject_code}`);
+                    }
                 } catch (err) {
-                    console.error("Error processing row:", err);
+                    console.error("❌ Error processing row:", err);
                 }
             })
             .on('end', async () => {
+                // updateGpaCgpa()
                 try {
-                    if (results.length === 0) {
+                    if (results.size === 0) {
                         return res.status(400).json({ message: "No valid data found in CSV." });
                     }
 
-                    // Prepare SQL query for insert/update
-                    const sql = `
-                        INSERT INTO marks (regid, subject_code, semester, test1, test2, attendance1, attendance2, grade, internal_marks) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
-                        ON DUPLICATE KEY UPDATE 
-                        test1 = VALUES(test1), 
-                        test2 = VALUES(test2), 
-                        attendance1 = VALUES(attendance1), 
-                        attendance2 = VALUES(attendance2), 
-                        grade = VALUES(grade), 
-                        internal_marks = VALUES(internal_marks)`;
-
-                    // Execute the query for each row
-                    await Promise.all(results.map(data => 
-                        db.query(sql, [data.regid, data.subject_code, data.semester, data.test1, data.test2, data.attendance1, data.attendance2, data.grade, data.internal_marks])
-                    ));
-
-                    // 🔹 **Auto-update student academics after marks update**
-                    await autoUpdateStudentMarks();
+                    console.log(`✅ Marks updated for ${results.size} students.`);
 
                     res.send(`
                         <script>
-                            alert("Marks uploaded and student academics updated successfully.");
+                            alert("Marks uploaded successfully.");
                             window.location.reload();
                         </script>
                     `);
-                } catch (dbErr) {
-                    console.error("Database Error:", dbErr);
-                    res.status(500).json({ message: "Error inserting/updating marks in the database." });
+                } catch (err) {
+                    console.error("❌ Error after processing CSV:", err);
+                    res.status(500).json({ message: "Error after processing CSV." });
                 } finally {
-                    // Delete the uploaded file after processing
-                    fs.unlinkSync(uploadPath);
+                    fs.unlinkSync(uploadPath); // Clean up uploaded file
                 }
             });
     } catch (error) {
-        console.error("Upload error:", error);
+        console.error("❌ Upload error:", error);
         res.status(500).json({ message: "Internal Server Error" });
     }
 });
-
-
-async function autoUpdateStudentMarks() {
+app.post("/assignStudentMarks", async (req, res) => {
     try {
-        // 🔹 Step 1: Get all students and subjects from student_academics
-        const [studentsSubjects] = await db.execute(
-            "SELECT regid, subject_code FROM student_academics"
-        );
-
-        if (studentsSubjects.length === 0) {
-            console.log("No student academic records found. Skipping update.");
-            return;
+        const proctorId = req.session.proctor_id; // 🔥 Ensure req.user is defined
+        if (!proctorId) {
+            return res.status(403).json({ message: "Unauthorized access. No proctor ID found." });
         }
 
-        let updatedCount = 0;
+        // ✅ Fetch only students assigned to this proctor
+        const [assignedStudents] = await db.query(
+            "SELECT regid FROM students WHERE proctor_id = ?",
+            [proctorId]
+        );
+        const assignedRegIds = new Set(assignedStudents.map(student => student.regid));
 
-        // 🔹 Step 2: Loop through each student & subject
-        for (const record of studentsSubjects) {
-            const { regid, subject_code } = record;
+        // ✅ Fetch marks
+        const [marks] = await db.query("SELECT * FROM marks");
+        if (marks.length === 0) {
+            return res.status(404).json({ message: "No marks found in the database." });
+        }
 
-            // 🔹 Step 3: Get marks from marks table
-            const [marks] = await db.execute(
-                "SELECT test1, test2, attendance1, attendance2, grade, internal_marks FROM marks WHERE regid = ? AND subject_code = ?",
-                [regid, subject_code]
+        let updates = 0, inserts = 0;
+        const processedStudents = new Set();
+
+        for (const mark of marks) {
+            const { regid, subject_code, semester, test1, test2, attendance1, attendance2, grades, internal_marks } = mark;
+
+            // 🔥 Skip if student is not assigned to this proctor
+            if (!assignedRegIds.has(regid)) {
+                console.log(`⏩ Skipping Student ${regid} (Not Assigned to Proctor ${proctorId})`);
+                continue;
+            }
+
+            // ✅ Check if student already has an entry in `student_academics`
+            const [existingRecords] = await db.query(
+                "SELECT * FROM student_academics WHERE regid = ? AND subject_code = ? AND semester = ?",
+                [regid, subject_code, semester]
             );
 
-            if (marks.length > 0) {
-                // 🔹 Step 4: Update student_academics with marks
-                await db.execute(
+            if (existingRecords.length > 0) {
+                await db.query(
                     `UPDATE student_academics 
-                     SET test1 = ?, test2 = ?, attendance1 = ?, attendance2 = ?, grades = ?, internal_marks = ?
-                     WHERE regid = ? AND subject_code = ?`,
-                    [marks[0].test1, marks[0].test2, marks[0].attendance1, marks[0].attendance2, marks[0].grade, marks[0].internal_marks, regid, subject_code]
+                    SET attendance1 = ?, attendance2 = ?, test1 = ?, test2 = ?, grades = ?, internal_marks = ?
+                    WHERE regid = ? AND subject_code = ? AND semester = ?`,
+                    [attendance1 ?? null, attendance2 ?? null, test1 ?? null, test2 ?? null, grades ?? null, internal_marks ?? null, regid, subject_code, semester]
                 );
-                updatedCount++;
+                updates++;
+            } else {
+                await db.query(
+                    `INSERT INTO student_academics (regid, subject_code, semester, attendance1, attendance2, test1, test2, grades, internal_marks) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [regid, subject_code, semester, attendance1 ?? null, attendance2 ?? null, test1 ?? null, test2 ?? null, grades ?? null, internal_marks ?? null]
+                );
+                inserts++;
             }
+
+            processedStudents.add(regid);
         }
 
-        console.log(`Marks updated for ${updatedCount} students.`);
+        // 🔥 Trigger GPA & CGPA update for each processed student
+        for (const studentId of processedStudents) {
+            await updateGpaCgpa(studentId);
+        }
+
+        res.json({ message: `Marks assigned! ${updates} updated, ${inserts} inserted.` });
+
     } catch (error) {
-        console.error("Error auto-updating student marks:", error);
+        console.error("❌ Error assigning marks:", error.message);
+        res.status(500).json({ message: "Internal server error.", error: error.message });
     }
-}
+});
+app.post('/updateStudentMarks', async (req, res) => {
+    const { regid, semester, updatedData } = req.body;
 
-//-------------------------------------Students--------------------------------------------------
+    if (!regid) {
+        return res.status(400).json({ message: "Missing registration ID (regid)!" });
+    }
 
-// app.get('/getStudentData', (req, res) => {
-//     const studentId = req.query.studentId;
-//     const semester = req.query.semester;
+    if (!updatedData || updatedData.length === 0) {
+        return res.status(400).json({ message: "No changes detected." });
+    }
 
-//     const query = 'SELECT * FROM student_academics WHERE student_id = ? AND semester = ?';
-//     db.query(query, [studentId, semester], (err, results) => {
-//         if (err) {
-//             return res.status(500).send(err);
-//         }
-//         res.json(results);
-//     });
-
-// });
-
-
-// router.get('/student/academics', async (req, res) => {
-//     const { regid, semester } = req.query;
-
-//     if (!regid || !semester) {
-//         return res.status(400).json({ error: "Missing required parameters" });
-//     }
-
-//     try {
-//         const query = `SELECT subject, credit, subject_code, attendance1, attendance2, test1, test2, grades, internal_marks 
-//                        FROM student_academics 
-//                        WHERE regid = ? AND semester = ? 
-//                        ORDER BY subject_code`;
-//         const [rows] = await db.execute(query, [regid, semester]);
-//         res.json(rows);
-//     } catch (error) {
-//         console.error("Error fetching student academics:", error);
-//         res.status(500).json({ error: "Internal Server Error" });
-//     }
-// });
-
-// router.post('/uploadAchievement', upload.single('file'), async (req, res) => {
-//     try {
-//         const { title, regid } = req.body;
-//         const fileUrl = `/uploads/${req.file.filename}`; // Store relative URL
-
-//         if (!title || !regid) {
-//             return res.status(400).send("Title and student ID are required.");
-//         }
-
-//         // Insert into database
-//         await db.query('INSERT INTO achievements (regid, title, file_url) VALUES (?, ?, ?)', [regid, title, fileUrl]);
-
-//         res.status(200).send("Achievement uploaded successfully.");
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).send("Server error. Try again.");
-//     }
-// });
-
-router.get('/student/academics/:studentId/:semester', async (req, res) => {
-    const { studentId, semester } = req.params;
+    const connection = await db.getConnection();
     try {
-        const [rows] = await db.execute(
-            `SELECT subject, credit, semester, attendance1, attendance2, test1, test2, grades, internal_marks, gpa, cgpa 
-             FROM student_academics 
-             WHERE student_id = ? AND semester = ?`, 
-            [studentId, semester]
-        );
-        res.json(rows);
+        await connection.beginTransaction();
+
+        for (const subject of updatedData) {
+            const { subject_code, ...fieldsToUpdate } = subject;
+
+            // ✅ Convert empty strings & undefined to NULL
+            Object.keys(fieldsToUpdate).forEach(key => {
+                if (fieldsToUpdate[key] === "" || fieldsToUpdate[key] === undefined) {
+                    fieldsToUpdate[key] = null;
+                }
+            });
+
+            if (Object.keys(fieldsToUpdate).length === 0) continue;
+
+            let updateFields = Object.keys(fieldsToUpdate)
+                .map(field => `${field} = ?`)
+                .join(', ');
+
+            let values = Object.values(fieldsToUpdate);
+            values.push(regid, semester, subject_code);
+
+            console.log("✅ Updating student_academics:", { regid, semester, subject_code, fieldsToUpdate });
+
+            // ✅ Ensure no undefined values before query execution
+            if (values.includes(undefined)) {
+                console.error("🚨 Undefined value detected in query parameters:", values);
+                continue;
+            }
+
+            // ✅ Update student_academics table
+            const sqlAcademics = `UPDATE student_academics 
+                                  SET ${updateFields} 
+                                  WHERE regid = ? AND semester = ? AND subject_code = ?`;
+            await connection.execute(sqlAcademics, values);
+
+            // ✅ Update marks table
+            const sqlMarks = `UPDATE marks 
+                              SET ${updateFields} 
+                              WHERE regid = ? AND semester = ? AND subject_code = ?`;
+            await connection.execute(sqlMarks, values);
+        }
+
+        await connection.commit();
+        res.json({ message: "Marks updated successfully." });
+
     } catch (error) {
-        console.error('Error fetching academic data:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        await connection.rollback();
+        console.error("❌ Error updating marks:", error);
+        res.status(500).json({ message: "Error updating marks." });
+
+    } finally {
+        connection.release();
     }
 });
 
-// Calculate GPA and CGPA for a student per semester
-router.get('/student/gpa-cgpa/:studentId', async (req, res) => {
-    const { studentId } = req.params;
+//──────────────────────────────────Proctor&Students───────────────────────────────────────────
+app.get('/getStudentAcademicRecord/:studentId', async (req, res) => {
     try {
-        const [rows] = await db.execute(
-            `SELECT semester, ROUND(AVG(gpa), 3) AS gpa, ROUND(AVG(cgpa), 3) AS cgpa 
-             FROM student_academics 
-             WHERE student_id = ? 
-             GROUP BY semester`,
+        const studentId = req.params.studentId;
+
+        // Fetch student details
+        const [student] = await db.execute(
+            "SELECT name, regid FROM students WHERE student_id = ?", 
             [studentId]
         );
-        res.json(rows);
+
+        // If student does not exist
+        if (student.length === 0) {
+            return res.status(404).json({ message: "Student not found." });
+        }
+
+        // Fetch academic records
+        const [subjects] = await db.execute(
+            "SELECT * FROM student_academics WHERE student_id = ?", 
+            [studentId]
+        );
+
+        res.json({ 
+            student: student[0], 
+            subjects 
+        });
+
     } catch (error) {
-        console.error('Error calculating GPA/CGPA:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        console.error("Error loading academic records:", error);
+        res.status(500).json({ message: "Error loading academic records." });
     }
 });
-
-
-
-// Upload achievement file
-router.post('/student/achievements/upload', upload.single('file'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ message: 'No file uploaded' });
-    }
-    res.json({ message: 'File uploaded successfully', filePath: `/uploads/${req.file.filename}` });
-});
-
-// Fetch all uploaded achievements
-router.get('/student/achievements', async (req, res) => {
+app.get('/getStudentAchievements/:studentId', async (req, res) => {
     try {
-        const [rows] = await db.execute(`SELECT * FROM student_achievements`);
-        res.json(rows);
+        const studentId = req.params.studentId;
+
+        const [achievements] = await db.execute(
+            "SELECT id, title, file_path FROM student_achievements WHERE student_id = ?", 
+            [studentId]
+        );
+
+        res.json(achievements);
+
     } catch (error) {
-        console.error('Error fetching achievements:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        console.error("Error fetching achievements:", error);
+        res.status(500).json({ message: "Error fetching achievements." });
+    }
+});
+app.get('/downloadAchievement/:id', async (req, res) => {
+    try {
+        const achId = req.params.id;
+
+        const [achievement] = await db.execute(
+            "SELECT file_path, title FROM student_achievements WHERE id = ?", 
+            [achId]
+        );
+
+        if (achievement.length === 0) {
+            return res.status(404).json({ message: "Achievement not found." });
+        }
+
+        const filePath = path.join(__dirname, achievement[0].file_path);
+        res.download(filePath, achievement[0].file_name);
+
+    } catch (error) {
+        console.error("Error downloading achievement:", error);
+        res.status(500).json({ message: "Error downloading achievement." });
     }
 });
 
 app.get('/api/session', (req, res) => {
-    if (req.session.userId) {
-        res.json({ userId: req.session.userId });
-    } else {
-        res.status(401).json({ message: "Not logged in" });
+    if (!req.session.userId) {
+        return res.status(401).json({ message: "Not logged in" });
+    }
+
+    const response = { userId: req.session.userId };  // Default: Return userId
+
+    if (req.session.role === 'proctor') {
+        response.role = req.session.role;  // Add role only for proctors
+    }
+
+    res.json(response);
+});
+
+
+//──────────────────────────────────Students───────────────────────────────────────────────────
+
+app.post('/uploadAchievement', upload.single('file'), async (req, res) => {
+    try {
+        const { student_id, title } = req.body;
+        if (!title) return res.status(400).json({ success: false, message: "Title is required" });
+
+        const filePath = `uploads/${req.file.filename}`;
+
+        await db.execute(
+            "INSERT INTO student_achievements (student_id, title, file_path) VALUES (?, ?, ?)",
+            [student_id, title, filePath]
+        );
+
+        res.json({ success: true, message: "Achievement uploaded successfully!" });
+
+    } catch (error) {
+        console.error("❌ Error uploading achievement:", error);
+        res.status(500).json({ success: false, message: "Server error while uploading achievement" });
     }
 });
 
-app.get('/test', (req, res) => {
-    res.json({ message: 'Server is running!' });
-});
+
+
+//──────────────────────────────────Routes───────────────────────────────────────────────────
 
 router.use((req, res) => {
     res.status(404).json({ success: false, message: "API not found" });

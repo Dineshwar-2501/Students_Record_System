@@ -344,3 +344,25 @@
       transform: scale(1);
   }
 }
+.gpa-cgpa-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  position: relative;
+}
+
+.gpa-cgpa {
+  display: flex;
+  gap: 20px;
+}
+
+.edit-marks-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.save-marks-btn {
+  align-self: flex-start;
+}

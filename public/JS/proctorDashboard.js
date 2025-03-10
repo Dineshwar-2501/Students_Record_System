@@ -2,78 +2,125 @@ $(document).ready(async function () {
     await loadAssignedStudents();
 
     const sidebar = $('#sidebar');
-    const toggleButton = $('#sidebar-toggle-btn');
+    const toggleButton = $('#sidebar-toggle-btn'); // Corrected reference
     const workspaceToggleButton = $('#toggle-sidebar-btn'); // Ensure single toggle
     const uploadMarksButton = $('#upload-marks-button');
     const editProfileButton = $('#edit-profile-button');
     const profileModal = $('#profile-modal');
     const closeProfileModal = $('#close-profile-modal');
 
-    // 📌 Toggle Sidebar when the button is clicked
-    toggleButton.click(function (event) {
-        event.stopPropagation(); // Prevent click from triggering document click event
+    // ✅ Fetch session details before UI updates
+    try {
+        const response = await fetch('/api/session');
+        const data = await response.json();
 
-        if (sidebar.hasClass('open')) {
-            sidebar.removeClass('open').addClass('closed').css("left", "-250px");
-            toggleButton.removeClass('hidden');
-        } else {
-            sidebar.removeClass('closed').addClass('open').css("left", "0px");
-            toggleButton.addClass('hidden');
+        if (data.role === 'proctor') {
+            sidebar.addClass('open').css("left", "0px"); // Sidebar open by default
+            toggleButton.hide(); // Hide sidebar toggle button
+            workspaceToggleButton.hide(); // Hide workspace button if needed
         }
+
+    } catch (error) {
+        console.error("Error loading session data:", error);
+    }
+
+    // ✅ Sidebar Toggle
+    toggleButton.click(function (event) {
+        event.stopPropagation();
+        toggleSidebar();
     });
 
-    // 📌 Toggle Sidebar when workspace button clicked
+    // ✅ Toggle Sidebar when workspace button clicked
     workspaceToggleButton.click(function (event) {
         event.stopPropagation();
-
-        if (sidebar.hasClass('open')) {
-            sidebar.removeClass('open').addClass('closed').css("left", "-250px");
-            workspaceToggleButton.removeClass('hidden');
-        } else {
-            sidebar.removeClass('closed').addClass('open').css("left", "0px");
-            workspaceToggleButton.addClass('hidden');
-        }
+        toggleSidebar();
     });
 
-    // 📌 Close Sidebar when clicking outside, but NOT when clicking inside
+    function toggleSidebar() {
+        if (sidebar.hasClass('open')) {
+            sidebar.removeClass('open').addClass('closed').css("left", "-250px");
+            toggleButton.removeClass('hidden').show();
+            workspaceToggleButton.removeClass('hidden').show();
+        } else {
+            sidebar.removeClass('closed').addClass('open').css("left", "0px");
+            toggleButton.addClass('hidden').hide();
+            workspaceToggleButton.addClass('hidden').hide();
+        }
+    }
+
+    // ✅ Close Sidebar when clicking outside
     $(document).click(function (event) {
         if (!$(event.target).closest("#sidebar, #sidebar-toggle-btn, #toggle-sidebar-btn").length) {
             sidebar.removeClass("open").addClass("closed").css("left", "-250px");
-            toggleButton.removeClass("hidden");
-            workspaceToggleButton.removeClass("hidden");
+            toggleButton.removeClass("hidden").show();
+            workspaceToggleButton.removeClass("hidden").show();
         }
     });
 
-    // 📌 Hide Sidebar When Upload Marks Button Clicked
+    // ✅ Hide Sidebar When Upload Marks Button Clicked
     uploadMarksButton.click(function () {
         sidebar.removeClass('open').addClass('closed').css("left", "-550px");
-        toggleButton.removeClass('hidden');
-        workspaceToggleButton.removeClass('hidden');
+        toggleButton.removeClass('hidden').show();
+        workspaceToggleButton.removeClass('hidden').show();
     });
 
-    // 📌 Hide Sidebar When Edit Profile Button Clicked & Show Modal
+    // ✅ Hide Sidebar When Edit Profile Button Clicked & Show Modal
     editProfileButton.click(function () {
         sidebar.removeClass('open').addClass('closed').css("left", "-250px");
-        toggleButton.removeClass('hidden');
-        workspaceToggleButton.removeClass('hidden');
+        toggleButton.removeClass('hidden').show();
+        workspaceToggleButton.removeClass('hidden').show();
         profileModal.show();
     });
 
-    // 📌 Close Profile Modal and Show Sidebar Again
+    // ✅ Close Profile Modal and Show Sidebar Again
     closeProfileModal.click(function () {
         profileModal.hide();
         sidebar.removeClass('closed').addClass('open').css("left", "0px");
     });
 
-    // 📌 Sidebar Search: Filter Assigned Students
+    // ✅ Sidebar Search: Filter Assigned Students
     $('#sidebar-student-search').on('input', function () {
         const query = $(this).val().toLowerCase().trim();
         $('.student-item').each(function () {
             $(this).toggle($(this).text().toLowerCase().includes(query));
         });
     });
+  
+    
+        
+    // 📌 Load Student Data When Sidebar Student Clicked
+    $(document).on('click', '.student-item', function () {
+        const studentId = $(this).data('id');
+        loadStudentWorkspace(studentId);
 
+        // 📌 Hide Sidebar & Expand Workspace
+        sidebar.removeClass('open').addClass('closed').css("left", "-250px");
+        workspaceToggleButton.removeClass('hidden');
+    });
+    document.getElementById("assign-marks-button").addEventListener("click", async () => {
+        try {
+            const response = await fetch("/assignStudentMarks", { method: "POST" });
+    
+            if (response.ok) {
+                const data = await response.json();
+                alert(`✅ Marks assigned! ${data.message}`);
+                
+                // Reload the page after successful update
+                location.reload();
+            } else {
+                const errorData = await response.json();
+                alert(`❌ Failed to assign marks: ${errorData.message}`);
+            }
+        } catch (error) {
+            console.error("❌ Error assigning marks:", error.message);
+            alert("Internal server error.");
+        }
+    });
+    
 
+    
+    
+    
     document.addEventListener("DOMContentLoaded", function () {
         const semesterTabs = document.getElementById("semesterTabs"); // Ensure correct ID
         semesterTabs.style.display = "none"; // Hide initially
@@ -114,7 +161,7 @@ $(document).ready(async function () {
             $('#proctor-name-input').val(data.name);
             $('#proctor-email-input').val(data.email);
             $('#proctor-designation-input').val(data.designation);
-            $('#proctor-phone-input').val(data.phone);
+            $('#proctor-phone-input').val(data.phone_number);
         } catch (error) {
             console.error('Error loading proctor profile:', error);
         }
@@ -130,11 +177,11 @@ $(document).ready(async function () {
             name: $('#proctor-name-input').val().trim(),
             email: $('#proctor-email-input').val().trim(),
             designation: $('#proctor-designation-input').val().trim(),
-            phone: $('#proctor-phone-input').val().trim(),
+            phone_number: $('#proctor-phone-input').val().trim(),
         };
     
         // Basic validation
-        if (!formData.name || !formData.email || !formData.designation || !formData.phone) {
+        if (!formData.name || !formData.email || !formData.designation || !formData.phone_number) {
             alert("Please fill out all fields before submitting.");
             return;
         }
@@ -245,261 +292,229 @@ document.getElementById('uploadCSVForm').addEventListener('submit', function (ev
             }
         });
     });
-    
-    // 📌 Load Student Data When Sidebar Student Clicked
-    $(document).on('click', '.student-item', function () {
-        const studentId = $(this).data('id');
-        loadStudentWorkspace(studentId);
 
-        // 📌 Hide Sidebar & Expand Workspace
-        sidebar.removeClass('open').addClass('closed').css("left", "-250px");
-        workspaceToggleButton.removeClass('hidden');
-    });
 
     loadAssignedStudents();
-});;
-    
-
-function resetWorkspace() {
-    document.getElementById("studentData").style.display = "none";
-    document.getElementById("watermark").style.display = "block";
-}
-
-    // ─── FUNCTION: LOAD STUDENT WORKSPACE ─────────────────
-    async function loadStudentWorkspace(studentId) {
-        try {
-            const response = await fetch(`/getStudentAcademicRecord/${studentId}`);
-            const { student, subjects } = await response.json();
-    
-            if (!student || !subjects) {
-                throw new Error("Invalid student data received.");
-            }
-    
-            const workspace = $('#student-workspace');
-            workspace.empty();
-    
-            // 📌 Student Header
-            workspace.append(`
-                <div id="student-header">
-                    <h3>${student.name} (${student.regid})</h3>
-                </div>
-            `);
-    
-            // 📌 Create Semester Tabs (1-8) + Achievements
-            let tabHtml = `<ul id="tab-headers" class="tab-container">`;
-            for (let sem = 1; sem <= 8; sem++) {
-                tabHtml += `<li class="tab-header" data-tab="${sem}">Semester ${sem}</li>`;
-            }
-            tabHtml += `<li class="tab-header" data-tab="achievements">Achievements</li></ul>`;
-            workspace.append(tabHtml);
-    
-            workspace.append('<div id="tab-contents"></div>');
-    
-            // 📌 Create Tab Content for Each Semester
-            for (let sem = 1; sem <= 8; sem++) {
-                $('#tab-contents').append(`<div class="tab-content" id="tab-${sem}" style="display: none;" data-student-id="${studentId}"></div>`);
-            }
-            $('#tab-contents').append(`<div class="tab-content" id="tab-achievements" style="display: none;"></div>`);
-    
-            // 📌 Populate Each Semester Tab with Subjects
-            for (let sem = 1; sem <= 8; sem++) {
-                let semSubjects = subjects.filter(s => s.semester == sem);
-                console.log(`📌 Semester ${sem} Subjects:`, semSubjects);
-    
-                if (semSubjects.length === 0) {
-                    $(`#tab-${sem}`).append(`<p class="no-data">No data available for Semester ${sem}.</p>`);
-                    continue;
-                }
-    
-                let tableHtml = `<table class="academic-table">
-                    <thead>
-                        <tr>
-                            <th>Subject Name</th>
-                            <th>Credit</th>
-                            <th>Subject Code</th>
-                            <th>Attendance 1</th>
-                            <th>Attendance 2</th>
-                            <th>Test 1</th>
-                            <th>Test 2</th>
-                            <th>Grade</th>
-                            <th>Internal Marks</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-    
-                semSubjects.forEach(sub => {
-                    tableHtml += `
-                        <tr data-subject-code="${sub.subject_code}">
-                            <td>${sub.subject}</td>
-                            <td>${sub.credit}</td>
-                            <td>${sub.subject_code}</td>
-                            <td contenteditable="true" class="edit-attendance1">${sub.attendance1 || ''}</td>
-                            <td contenteditable="true" class="edit-attendance2">${sub.attendance2 || ''}</td>
-                            <td contenteditable="true" class="edit-test1">${sub.test1 || ''}</td>
-                            <td contenteditable="true" class="edit-test2">${sub.test2 || ''}</td>
-                            <td contenteditable="true" class="edit-grade">${sub.grades || ''}</td>
-                            <td contenteditable="true" class="edit-internal">${sub.internal_marks || ''}</td>
-                        </tr>`;
-                });
-    
-                tableHtml += `</tbody></table>
-                <div class="gpa-cgpa">
-                    <p>GPA: <span class="gpa-value" data-sem="${sem}">--</span></p>
-                    <p>CGPA: <span class="cgpa-value" data-sem="${sem}">--</span></p>
-                    <button class="update-marks-btn" data-sem="${sem}">Apply Updates</button>
-                </div>`;
-    
-                // 📌 Ensure the Tab Exists Before Updating
-                const tabElement = $(`#tab-${sem}`);
-                if (tabElement.length) {
-                    tabElement.empty().append(tableHtml);
-                    console.log(`✅ Updated #tab-${sem} successfully.`);
-                } else {
-                    console.error(`❌ ERROR: #tab-${sem} does not exist.`);
-                }
-            }
-    
-            // 📌 Handle Tab Switching
-            $('.tab-header').click(function () {
-                const selectedTab = $(this).data('tab');
-                $('.tab-content').hide();
-                $(`#tab-${selectedTab}`).fadeIn(200);
-                $('.tab-header').removeClass('active');
-                $(this).addClass('active');
-    
-                // 📌 Load Achievements When Clicked
-                if (selectedTab === 'achievements') {
-                    loadAchievements(studentId);
-                }
-            });
-    
-            // 📌 Default to Semester 1 (Auto Click)
-            $('.tab-header[data-tab="1"]').trigger('click');
-    
-        } catch (error) {
-            console.error('❌ Error loading student academic record:', error);
-            alert('Failed to load student academic record.');
-        }
-    }
-    
-    
-    // ─── FUNCTION: SAVE SEMESTER MARKS ─────────────────
-
-// 📌 Update Marks & Refresh GPA/CGPA
-async function saveSemesterMarks(studentId, semester) {
-    const rows = $(`#tab-${semester} table.academic-table tbody tr`);
-    const updates = [];
-
-    rows.each(function () {
-        const subject_code = $(this).data('subject-code');
-        const attendance1 = $(this).find('.edit-attendance1').text().trim() || "0";
-        const attendance2 = $(this).find('.edit-attendance2').text().trim() || "0";
-        const test1 = $(this).find('.edit-test1').text().trim() || "0";
-        const test2 = $(this).find('.edit-test2').text().trim() || "0";
-        const grade = $(this).find('.edit-grade').text().trim().toUpperCase() || "U";
-        const internal = $(this).find('.edit-internal').text().trim() || "0";
-
-        updates.push({ subject_code, attendance1, attendance2, test1, test2, grade, internal });
-    });
-
+});
+async function loadStudentWorkspace(studentId) {
     try {
-        // 🔹 Update Marks
-        const updateResponse = await fetch('/updateStudentMarks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentId, semester, updates })
+        const response = await fetch(`/getStudentAcademicRecord/${studentId}`);
+        const { student, subjects } = await response.json();
+
+        if (!student || !subjects) {
+            throw new Error("Invalid student data received.");
+        }
+
+        const workspace = $('#student-workspace');
+        workspace.empty();
+
+        // 📌 Student Header
+        workspace.append(`
+            <div id="student-header">
+                <h3>${student.name} (${student.regid})</h3>
+            </div>
+        `);
+
+        // 📌 Create Semester Tabs (1-8) + Achievements
+        let tabHtml = `<ul id="tab-headers" class="tab-container">`;
+        for (let sem = 1; sem <= 8; sem++) {
+            tabHtml += `<li class="tab-header ${sem === 1 ? 'active' : ''}" data-tab="${sem}">Semester ${sem}</li>`;
+        }
+        tabHtml += `<li class="tab-header" data-tab="achievements">Achievements</li></ul>`;
+        workspace.append(tabHtml);
+
+        // 📌 Create tab content containers
+        let tabContentHtml = '<div id="tab-contents">';
+        for (let sem = 1; sem <= 8; sem++) {
+            tabContentHtml += `<div class="tab-content" id="tab-${sem}" data-student-id="${studentId}" style="display: ${sem === 1 ? 'block' : 'none'};"></div>`;
+        }
+        tabContentHtml += `<div class="tab-content" id="tab-achievements" style="display: none;">Achievements Content</div></div>`;
+        workspace.append(tabContentHtml);
+
+        // 📌 Generate Table Content for Each Semester
+        for (let sem = 1; sem <= 8; sem++) {
+            let semSubjects = subjects.filter(s => s.semester == sem);
+
+            let tableHtml = `<table class="academic-table">
+                <thead>
+                    <tr>
+                        <th>Subject Name</th>
+                        <th>Credit</th>
+                        <th>Subject Code</th>
+                        <th>Attendance 1</th>
+                        <th>Attendance 2</th>
+                        <th>Test 1</th>
+                        <th>Test 2</th>
+                        <th>Grades</th>
+                        <th>Internal Marks</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            semSubjects.forEach(sub => {
+                tableHtml += `
+                    <tr data-subject-code="${sub.subject_code}">
+                        <td>${sub.subject}</td>
+                        <td>${sub.credit}</td>
+                        <td>${sub.subject_code}</td>
+                        <td contenteditable="false" class="edit-attendance1">${sub.attendance1 || ''}</td>
+                        <td contenteditable="false" class="edit-attendance2">${sub.attendance2 || ''}</td>
+                        <td contenteditable="false" class="edit-test1">${sub.test1 || ''}</td>
+                        <td contenteditable="false" class="edit-test2">${sub.test2 || ''}</td>
+                        <td contenteditable="false" class="edit-grades">${sub.grades || ''}</td>
+                        <td contenteditable="false" class="edit-internal_marks">${sub.internal_marks || ''}</td>
+                    </tr>`;
+            });
+
+            tableHtml += `</tbody></table>
+            <div class="gpa-cgpa-container">
+                <button class="edit-marks-btn" data-sem="${sem}">Edit</button>
+                <div class="gpa-cgpa">
+                    <p>GPA: <span class="gpa-value" data-sem="${sem}">${semSubjects.length > 0 ? semSubjects[0].gpa : '--'}</span></p>
+                    <p>CGPA: <span class="cgpa-value" data-sem="${sem}">${semSubjects.length > 0 ? semSubjects[0].cgpa : '--'}</span></p>
+                </div>
+                <button class="save-marks-btn" data-sem="${sem}" style="display:none;">Save</button>
+            </div>`;
+
+            $(`#tab-${sem}`).empty().append(tableHtml);
+        }
+
+        // 📌 Handle Tab Switching
+        $('.tab-header').click(function () {
+            const selectedTab = $(this).data('tab');
+            $('.tab-content').hide();
+            $(`#tab-${selectedTab}`).fadeIn(200);
+            $('.tab-header').removeClass('active');
+            $(this).addClass('active');
+
+            if (selectedTab === 'achievements') {
+                loadAchievements(studentId);
+            }
         });
 
-        if (!updateResponse.ok) throw new Error('Failed to update marks');
+        // 📌 Enable Editing
+        $('.edit-marks-btn').click(function () {
+            const sem = $(this).data('sem');
 
-        // 🔹 Fetch Updated GPA/CGPA
-        const gpaResponse = await fetch(`/getGpaCgpa?studentId=${studentId}&semester=${semester}`);
-        if (!gpaResponse.ok) throw new Error('Failed to fetch GPA/CGPA');
+            // Store original data
+            $(`#tab-${sem} td[class^="edit-"]`).each(function () {
+                $(this).attr('data-original', $(this).text().trim());
+            });
 
-        const { gpa, cgpa } = await gpaResponse.json();
+            $(`#tab-${sem} td[class^="edit-"]`).attr('contenteditable', 'true');
+            $(this).hide();
+            $(`.save-marks-btn[data-sem='${sem}']`).show();
+        });
 
-        // 🔹 Ensure numerical values before updating UI
-        const formattedGpa = isNaN(parseFloat(gpa)) ? "0.00" : parseFloat(gpa).toFixed(2);
-        const formattedCgpa = isNaN(parseFloat(cgpa)) ? "0.00" : parseFloat(cgpa).toFixed(2);
+        // 📌 Save Edited Marks
+        $('.save-marks-btn').click(async function () {
+            const sem = $(this).data('sem');
+            const regid = student.regid;
 
-        // 🔹 Update the UI
-        $(`.gpa-value[data-sem="${semester}"]`).text(formattedGpa);
-        $('.cgpa-value').text(formattedCgpa);
+            if (!regid) {
+                alert("Error: Registration ID is missing!");
+                console.error("🚨 Missing regid");
+                return;
+            }
 
-        alert("Marks updated successfully! GPA & CGPA recalculated.");
+            const rows = $(`#tab-${sem} tbody tr`);
+            let updatedData = [];
+
+            rows.each(function () {
+                let row = $(this);
+                let subjectCode = row.data('subject-code');
+                let changes = { subject_code: subjectCode };
+                let hasChanges = false;
+
+                ['attendance1', 'attendance2', 'test1', 'test2', 'internal_marks', 'grades'].forEach(field => {
+                    let cell = row.find(`.edit-${field}`);
+                    let newValue = cell.text().trim();
+                    let originalValue = cell.attr('data-original');
+
+                    if (newValue !== originalValue) {
+                        changes[field] = newValue !== "" ? newValue : originalValue;
+                        hasChanges = true;
+                    }
+                });
+
+                if (hasChanges) {
+                    updatedData.push(changes);
+                }
+            });
+
+            if (updatedData.length === 0) {
+                alert("No changes detected.");
+                console.warn("⚠️ No valid updates to send.");
+                return;
+            }
+
+            console.log("✅ Sending Data:", JSON.stringify({ regid, semester: sem, updatedData }, null, 2));
+
+            try {
+                const response = await fetch('/updateStudentMarks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ regid, semester: sem, updatedData })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert('Marks updated successfully!');
+                    console.log("✅ Update Success:", result);
+                } else {
+                    throw new Error(result.message || 'Unknown error occurred.');
+                }
+
+            } catch (error) {
+                alert('Failed to update marks.');
+                console.error("❌ Error updating marks:", error);
+            }
+
+            $(this).hide();
+            $(`.edit-marks-btn[data-sem='${sem}']`).show();
+            $(`#tab-${sem} td[class^="edit-"]`).attr('contenteditable', 'false');
+        });
+
     } catch (error) {
-        console.error("Error updating marks:", error);
-        alert("Failed to update marks. Please try again.");
+        alert('Failed to load student data.');
+        console.error("❌ Error loading workspace:", error);
     }
 }
-
-
-//  Attach Click Event to "Apply Updates" Button
-$(document).off('click', '.update-marks-btn').on('click', '.update-marks-btn', function () {
-    const sem = $(this).data('sem');
-    const studentId = $(this).closest('.tab-content').data('student-id');
-    saveSemesterMarks(studentId, sem);
-});
-
-async function loadStudentGpaCgpa(studentId, semester) {
-    try {
-        const response = await fetch(`/getGpaCgpa?studentId=${studentId}&semester=${semester}`);
-        if (!response.ok) throw new Error('Failed to fetch GPA/CGPA');
-
-        const { gpa, cgpa } = await response.json();
-        
-        // 🔹 Ensure numerical values before updating UI
-        const formattedGpa = isNaN(parseFloat(gpa)) ? "0.00" : parseFloat(gpa).toFixed(2);
-        const formattedCgpa = isNaN(parseFloat(cgpa)) ? "0.00" : parseFloat(cgpa).toFixed(2);
-
-        $(`.gpa-value[data-sem="${semester}"]`).text(formattedGpa);
-        $('.cgpa-value').text(formattedCgpa);
-    } catch (error) {
-        console.error("Error loading GPA/CGPA:", error);
-    }
-}
-
-
-// 📌 Call this inside `loadStudentWorkspace()`
-for (let sem = 1; sem <= 8; sem++) {
-    loadStudentGpaCgpa(studentId, sem);
-}
-
-
-
-document.getElementById("applyUpdatesBtn").addEventListener("click", async function() {
-    const studentId = document.getElementById("studentId").value;
-    const semester = document.getElementById("semester").value;
-    const updates = collectUpdatedData(); // Function that gathers updated data
-
-    const response = await fetch('/updateStudentMarks', {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId, semester, updates })
-    });
-
-    const result = await response.json();
-    alert(result.message);
-
-    // 🔹 Fetch & Update GPA/CGPA
-    fetchUpdatedGpaCgpa(studentId, semester);
-});
 
     // ─── FUNCTION: LOAD ACHIEVEMENTS ─────────────────
+    $(document).on("click", ".student-item", function () {
+        const studentId = $(this).data("id");
+        loadAchievements(studentId);
+    });
+    
     async function loadAchievements(studentId) {
         try {
             const response = await fetch(`/getStudentAchievements/${studentId}`);
+            if (!response.ok) throw new Error("Failed to fetch achievements");
+    
             const achievements = await response.json();
             let achHtml = `<ul class="achievement-list">`;
-            achievements.forEach(ach => {
-                achHtml += `<li>${ach.title} - <a href="/downloadAchievement/${ach.id}" target="_blank">Download</a></li>`;
-            });
-            achHtml += `</ul>`;
+    
+            if (achievements.length === 0) {
+                achHtml = "<p class='no-data'>No achievements uploaded yet.</p>";
+            } else {
+                achievements.forEach(ach => {
+                    achHtml += `
+                        <li>
+                            <span>${ach.title}</span>
+                            <a href="/downloadAchievement/${ach.id}" target="_blank" class="download-btn">Download</a>
+                        </li>`;
+                });
+                achHtml += `</ul>`;
+            }
+    
             $('#tab-achievements').html(achHtml);
+    
         } catch (error) {
             console.error('Error loading achievements:', error);
         }
     }
+    
     $(document).ready(function () {
         $(".tab-header").click(function () {
             // Remove 'active' class from all tabs & hide all content
