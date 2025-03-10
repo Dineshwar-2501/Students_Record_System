@@ -103,6 +103,9 @@ function checkAuth(req, res, next) {
     }
     next();
 }
+app.get('/favicon.ico', (req, res) => {
+    res.sendFile(__dirname + '/public/favicon.ico');
+});
 
 app.get('/studentDashboard', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'studentDashboard.html'));
