@@ -11,7 +11,7 @@ const pool = mysql.createPool(process.env.MYSQL_URL || {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
-}
+})
 
 // Test connection
 (async () => {
@@ -22,6 +22,6 @@ const pool = mysql.createPool(process.env.MYSQL_URL || {
     } catch (err) {
         console.error('❌ Database connection failed:', err);
     }
-})();
+});
 
-module.exports = pool.promise();
+module.exports = pool;
