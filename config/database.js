@@ -13,8 +13,9 @@ const pool = mysql.createPool(process.env.MYSQL_URL || {
     queueLimit: 0
 })
 
+
 // Test connection
-(async () => {
+async () => {
     try {
         const connection = await pool.getConnection();
         console.log('✅ Connected to Railway MySQL!');
@@ -22,6 +23,6 @@ const pool = mysql.createPool(process.env.MYSQL_URL || {
     } catch (err) {
         console.error('❌ Database connection failed:', err);
     }
-});
+};
 
 module.exports = pool;
