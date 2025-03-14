@@ -104,7 +104,6 @@ const upload = multer({
     fileFilter: fileFilter, // Allow up to 5MB files
 });
 app.use(cookieParser());
-app.use(cors({ origin: "*" }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -113,6 +112,12 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/", studentRoutes); // Use student routes
 app.use("/uploads", express.static(path.join(__dirname, 'uploads')));
 app.use(proctorRoutes);
+
+app.use(cors({
+    origin: "*",  // Allow all origins (for testing)
+    methods: "GET,POST,PUT,DELETE",
+    allowedHeaders: "Content-Type,Authorization"
+}));
 
 app.use((err, req, res, next) => {
     console.error('Server error:', err);
