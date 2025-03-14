@@ -59,6 +59,8 @@ const proctorRoutes = require('./routes/proctorRoutes');
 //       secure: process.env.NODE_ENV === "production", // HTTPS only in production
 //       httpOnly: true,
 //       maxAge: 3600000, // 1 hour
+// sameSite: "None"  // ✅ Fix cross-site cookie issue
+
 //     },
 //   })
 // );
