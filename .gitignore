@@ -13,6 +13,7 @@ academic-progress/
 
 # Ignore specific directories
 public/Sql/
+my-react-app/
 # /build/
 uploads/
 # Ignore temporary system files
