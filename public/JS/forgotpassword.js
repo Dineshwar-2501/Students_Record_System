@@ -27,6 +27,7 @@ document.getElementById('forgotPasswordForm').addEventListener('submit', async (
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ email, role }), // Send email and role as JSON
+            cache: "no-store"
         });
 
         // Get the message display element
@@ -41,7 +42,7 @@ document.getElementById('forgotPasswordForm').addEventListener('submit', async (
             // Redirect to reset password page after a delay
             setTimeout(() => {
                 window.location.href = '/resetPassword';
-            }, 2000);
+            }, 4000);
         } else {
             // Parse and display error message
             const errorMessage = await response.text();
