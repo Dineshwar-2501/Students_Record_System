@@ -28,22 +28,24 @@ const proctorRoutes = require('./routes/proctorRoutes');
 const RedisStore = require("connect-redis").default;
 const { createClient } = require("redis");
 
+// Create Redis client
 const redisClient = createClient();
 redisClient.connect().catch(console.error);
 
+// Use Redis store in session middleware
 app.use(
-    session({
-      store:RedisStore({ client: redisClient }),
-      secret: process.env.SESSION_SECRET,
-      resave: false,
-      saveUninitialized: true,
-      cookie: { 
-        secure: true,  // Set to true if using HTTPS
-        httpOnly: true, 
-        maxAge: 3600000 
-      }
-    })
-  );
+  session({
+    store: new RedisStore({ client: redisClient }), // ✅ Correct syntax
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: { 
+      secure: true,  // Set to true if using HTTPS
+      httpOnly: true, 
+      maxAge: 3600000 
+    }
+  })
+);
   
 
 if (!fs.existsSync('uploads')) {
