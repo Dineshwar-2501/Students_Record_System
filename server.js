@@ -392,12 +392,11 @@ app.post('/forgotPassword', forgotPasswordLimiter, async (req, res) => {
     const { email, role } = req.body;
 
     // Validate role
-    if (!['student', 'proctor','admin'].includes(role)) {
+    const tables = { student: 'students', proctor: 'proctors', admin: 'admins' };
+    if (!tables[role]) {
         return res.status(400).send('Invalid role provided');
     }
-                const tableName = 
-                role === 'proctor' ? 'proctors' : 
-                role === 'admin' ? 'admins' : 'students';
+    const tableName = tables[role];
 
     try {
         // Check if user exists
@@ -406,15 +405,16 @@ app.post('/forgotPassword', forgotPasswordLimiter, async (req, res) => {
             return res.status(404).send('User not found');
         }
 
-        // Generate reset code
-        const code = Math.floor(Math.random() * 900000) + 100000; // 6-digit random code
+        // Generate secure reset code
+        const code = crypto.randomInt(100000, 999999);
+        const expiryDate = new Date(Date.now() + 15 * 60 * 1000); // 15 min expiry
 
         // Update reset code and expiry in the database
         await db.execute(
             `UPDATE ${tableName} 
-             SET reset_code = ?, reset_code_expiry = NOW() + INTERVAL 15 MINUTE 
+             SET reset_code = ?, reset_code_expiry = ? 
              WHERE email = ?`,
-            [code, email]
+            [code, expiryDate, email]
         );
 
         // Send email with reset code
@@ -427,6 +427,13 @@ app.post('/forgotPassword', forgotPasswordLimiter, async (req, res) => {
             return res.json({ message: 'Reset code sent to your email' });
         } catch (mailError) {
             console.error('Error sending reset email:', mailError);
+
+            // Rollback reset code update to avoid inconsistency
+            await db.execute(
+                `UPDATE ${tableName} SET reset_code = NULL, reset_code_expiry = NULL WHERE email = ?`,
+                [email]
+            );
+
             return res.status(500).send('Failed to send reset email. Please try again.');
         }
     } catch (error) {
@@ -434,6 +441,7 @@ app.post('/forgotPassword', forgotPasswordLimiter, async (req, res) => {
         return res.status(500).send('Server error');
     }
 });
+
 app.post('/resetPassword', async (req, res) => {
     const { email, role, code, newPassword } = req.body;
 
