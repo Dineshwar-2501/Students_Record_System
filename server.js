@@ -18,7 +18,7 @@ const db = require('./config/database');
 const csv = require('csv-parser');
 const crypto = require("crypto");
 const router = express.Router();
-const app = express();
+const app = require("express")();
 const PORT = process.env.PORT || 3000;
 const saltRounds = 10;
 const studentRoutes = require("./routes/StudentRoutes");
@@ -26,6 +26,7 @@ const rateLimiter = require('express-rate-limit');
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
 const RedisStore = require("connect-redis").default;
+const { createClient } = require("redis");
 
 const redisClient = createClient();
 redisClient.connect().catch(console.error);
@@ -37,12 +38,13 @@ app.use(
       resave: false,
       saveUninitialized: true,
       cookie: { 
-          secure: true,  // Set to true if using HTTPS
-          httpOnly: true, 
-          maxAge: 3600000 
+        secure: true,  // Set to true if using HTTPS
+        httpOnly: true, 
+        maxAge: 3600000 
       }
     })
   );
+  
 
 if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
