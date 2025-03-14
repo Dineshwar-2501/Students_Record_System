@@ -25,15 +25,16 @@ const studentRoutes = require("./routes/StudentRoutes");
 const rateLimiter = require('express-rate-limit'); 
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
-const { createClient } = require("redis");
-const RedisStore = require("connect-redis"); // ❌ No `.default` in v8
 const session = require("express-session");
+const { createClient } = require("redis");
+const RedisStore = require("connect-redis")(session); // ✅ Correct usage
 
 const app = express();
 
 // ✅ Create Redis Client
 const redisClient = createClient({
-  url: process.env.REDIS_URL, // Use Railway's Redis URL
+  url: process.env.REDIS_URL,
+  legacyMode: true, // ✅ Important for some Redis versions
 });
 redisClient.connect().catch(console.error);
 
@@ -41,10 +42,10 @@ redisClient.connect().catch(console.error);
 redisClient.on("error", (err) => console.error("❌ Redis Client Error:", err));
 redisClient.on("connect", () => console.log("✅ Redis connected successfully!"));
 
-// ✅ Correct way to use RedisStore in `connect-redis@8`
+// ✅ Correct way to initialize RedisStore
 const redisStore = new RedisStore({
   client: redisClient,
-  prefix: "session:", // Optional, helps organize Redis keys
+  prefix: "session:", // Optional
 });
 
 // ✅ Use Redis store in session middleware
@@ -63,6 +64,7 @@ app.use(
 );
 
 console.log("✅ Redis session store connected!");
+
 
 if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
