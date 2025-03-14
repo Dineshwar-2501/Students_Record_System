@@ -18,41 +18,56 @@ const db = require('./config/database');
 const csv = require('csv-parser');
 const crypto = require("crypto");
 const router = express.Router();
-const app = require("express")();
 const PORT = process.env.PORT || 3000;
 const saltRounds = 10;
 const studentRoutes = require("./routes/StudentRoutes");
 const rateLimiter = require('express-rate-limit'); 
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
-const RedisStore = require("connect-redis").default;
 const { createClient } = require("redis");
+const RedisStore = require("connect-redis").default;
+const app = express();
 
-// Create Redis client
-const redisClient = createClient();
-redisClient.connect().catch(console.error);
+// Middleware Setup
 
-// ✅ Correct way to use RedisStore in connect-redis v7+
+
+const redisClient = createClient({
+    url: process.env.REDIS_URL // Use Railway's Redis URL
+  });
+  redisClient.connect().catch(console.error);
+
+
 const redisStore = new RedisStore({
   client: redisClient,
   prefix: "session:", // Optional, helps organize Redis keys
 });
 
+
+app.use(cors({ origin: "*" }));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+});
 // Use Redis store in session middleware
 app.use(
-  session({
-    store: redisStore,
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    cookie: { 
-      secure: true,  // Set to true if using HTTPS
-      httpOnly: true, 
-      maxAge: 3600000 
-    }
-  })
-);
-  
+    session({
+      store: redisStore,
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: true,
+      cookie: { 
+        secure: process.env.NODE_ENV === "production", 
+        httpOnly: true, 
+        maxAge: 3600000 
+      }
+    })
+  );
 
 if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
@@ -92,21 +107,9 @@ const upload = multer({
     fileFilter: fileFilter, // Allow up to 5MB files
 });
 
-// Middleware Setup
-app.use(cors({ origin: "*" }));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/", studentRoutes); // Use student routes
 app.use("/uploads", express.static(path.join(__dirname, 'uploads')));
 app.use(proctorRoutes);
-
-app.use((err, req, res, next) => {
-    console.error('Server error:', err);
-    res.status(500).json({ message: 'Internal server error' });
-});
 
 
 // Session setup
