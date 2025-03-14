@@ -5,7 +5,7 @@ require('./jobs/scheduler');// Load scheduler of students year
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-// const session = require('express-session');
+const session = require('express-session');
 const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
 const path = require('path');
@@ -20,50 +20,50 @@ const crypto = require("crypto");
 const router = express.Router();
 const PORT = process.env.PORT || 3000;
 const saltRounds = 10;
-// const app = express();
+const app = express();
 const studentRoutes = require("./routes/StudentRoutes");
 const rateLimiter = require('express-rate-limit'); 
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
-const session = require("express-session");
-const { createClient } = require("redis");
-const RedisStore = require("connect-redis").default; // ✅ Correct for v8+
+// const session = require("express-session");
+// const { createClient } = require("redis");
+// const RedisStore = require("connect-redis").default; // ✅ Correct for v8+
 
-const app = express();
+// const app = express();
 
-// ✅ Create Redis Client
-const redisClient = createClient({
-  url: process.env.REDIS_URL,
-  legacyMode: true, // ✅ Important for compatibility
-});
-redisClient.connect().catch(console.error);
+// // ✅ Create Redis Client
+// const redisClient = createClient({
+//   url: process.env.REDIS_URL,
+//   legacyMode: true, // ✅ Important for compatibility
+// });
+// redisClient.connect().catch(console.error);
 
-// ✅ Debugging Redis Connection
-redisClient.on("error", (err) => console.error("❌ Redis Client Error:", err));
-redisClient.on("connect", () => console.log("✅ Redis connected successfully!"));
+// // ✅ Debugging Redis Connection
+// redisClient.on("error", (err) => console.error("❌ Redis Client Error:", err));
+// redisClient.on("connect", () => console.log("✅ Redis connected successfully!"));
 
-// ✅ Correct RedisStore initialization
-const redisStore = new RedisStore({
-  client: redisClient,
-  prefix: "session:", // Optional
-});
+// // ✅ Correct RedisStore initialization
+// const redisStore = new RedisStore({
+//   client: redisClient,
+//   prefix: "session:", // Optional
+// });
 
-// ✅ Use Redis store in session middleware
-app.use(
-  session({
-    store: redisStore,
-    secret: process.env.SESSION_SECRET || "supersecretkey",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      httpOnly: true,
-      maxAge: 3600000, // 1 hour
-    },
-  })
-);
+// // ✅ Use Redis store in session middleware
+// app.use(
+//   session({
+//     store: redisStore,
+//     secret: process.env.SESSION_SECRET || "supersecretkey",
+//     resave: false,
+//     saveUninitialized: false,
+//     cookie: {
+//       secure: process.env.NODE_ENV === "production", // HTTPS only in production
+//       httpOnly: true,
+//       maxAge: 3600000, // 1 hour
+//     },
+//   })
+// );
 
-console.log("✅ Redis session store connected!");
+// console.log("✅ Redis session store connected!");
 
 
 if (!fs.existsSync('uploads')) {
@@ -121,16 +121,16 @@ app.use((err, req, res, next) => {
 
 // Session setup
 
-// app.use(session({
-//     secret: process.env.SESSION_SECRET,
-//     resave: false,
-//     saveUninitialized: true,
-//     cookie: { 
-//         secure: false,  // Set to true if using HTTPS
-//         httpOnly: true, 
-//         maxAge: 3600000 
-//     }
-// }));
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: { 
+        secure: false,  // Set to true if using HTTPS
+        httpOnly: true, 
+        maxAge: 3600000 
+    }
+}));
 
 
 function checkAuth(req, res, next) {
