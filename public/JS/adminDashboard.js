@@ -327,7 +327,8 @@ $(document).ready(function () {
         
             $.ajax({
                 type: 'POST',
-                url: 'http://localhost:5000/assignProctor',
+                // url: 'http://localhost:5000/assignProctor',
+                url:'https://studentsrecordsystem-production.up.railway.app/assignProctor',
                 data: JSON.stringify({ proctor_id: assignProctorId, student_ids: selectedStudents }),
                 contentType: 'application/json',
                 success: (response) => {

@@ -244,7 +244,7 @@ async function loadAchievements(studentId) {
         $('#tab-achievements').html(achHtml);
 
     } catch (error) {
-        console.error('Error loading achievements:', error);
+        console.error('Error loading    achievements:', error);
     }
 }
 

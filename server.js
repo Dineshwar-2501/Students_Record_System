@@ -25,8 +25,24 @@ const studentRoutes = require("./routes/StudentRoutes");
 const rateLimiter = require('express-rate-limit'); 
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
+const RedisStore = require("connect-redis").default;
 
+const redisClient = createClient();
+redisClient.connect().catch(console.error);
 
+app.use(
+    session({
+      store: new RedisStore({ client: redisClient }),
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: true,
+      cookie: { 
+          secure: true,  // Set to true if using HTTPS
+          httpOnly: true, 
+          maxAge: 3600000 
+      }
+    })
+  );
 
 if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
@@ -67,14 +83,14 @@ const upload = multer({
 });
 
 // Middleware Setup
-app.use(cors());
+app.use(cors({ origin: "*" }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/", studentRoutes); // Use student routes
-app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(path.join(__dirname, 'uploads')));
 app.use(proctorRoutes);
 
 app.use((err, req, res, next) => {
@@ -85,16 +101,16 @@ app.use((err, req, res, next) => {
 
 // Session setup
 app.use(cookieParser());
-app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    cookie: { 
-        secure: false,  // Set to true if using HTTPS
-        httpOnly: true, 
-        maxAge: 3600000 
-    }
-}));
+// app.use(session({
+//     secret: process.env.SESSION_SECRET,
+//     resave: false,
+//     saveUninitialized: true,
+//     cookie: { 
+//         secure: false,  // Set to true if using HTTPS
+//         httpOnly: true, 
+//         maxAge: 3600000 
+//     }
+// }));
 
 
 function checkAuth(req, res, next) {
@@ -103,9 +119,7 @@ function checkAuth(req, res, next) {
     }
     next();
 }
-app.get('/favicon.ico', (req, res) => {
-    res.sendFile(__dirname + '/public/favicon.ico');
-});
+
 
 app.get('/studentDashboard', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'studentDashboard.html'));
@@ -1443,7 +1457,8 @@ router.use((req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    // console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Server is running on Railway : ${PORT}`);
 });
 
 module.exports = app;
