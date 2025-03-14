@@ -2,6 +2,7 @@ require('dotenv').config();// Load environment variables from .env file
 require('./jobs/scheduler');// Load scheduler of students year
 
 // Required modules
+const RedisStore = require("connect-redis").default;
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -25,7 +26,6 @@ const rateLimiter = require('express-rate-limit');
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
 const { createClient } = require("redis");
-const RedisStore = require("connect-redis").default;
 const app = express();
 
 // Middleware Setup
@@ -35,6 +35,11 @@ const redisClient = createClient({
     url: process.env.REDIS_URL // Use Railway's Redis URL
   });
   redisClient.connect().catch(console.error);
+// ✅ Debugging Redis Connection
+
+
+redisClient.on("error", (err) => console.error("❌ Redis Client Error:", err));
+redisClient.on("connect", () => console.log("✅ Redis connected successfully!"));
 
 
 const redisStore = new RedisStore({
@@ -42,7 +47,7 @@ const redisStore = new RedisStore({
   prefix: "session:", // Optional, helps organize Redis keys
 });
 
-
+app.use(cookieParser());
 app.use(cors({ origin: "*" }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -50,10 +55,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-app.use((err, req, res, next) => {
-    console.error('Server error:', err);
-    res.status(500).json({ message: 'Internal server error' });
-});
 // Use Redis store in session middleware
 app.use(
     session({
@@ -111,9 +112,13 @@ app.use("/", studentRoutes); // Use student routes
 app.use("/uploads", express.static(path.join(__dirname, 'uploads')));
 app.use(proctorRoutes);
 
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+});
 
 // Session setup
-app.use(cookieParser());
+
 // app.use(session({
 //     secret: process.env.SESSION_SECRET,
 //     resave: false,
