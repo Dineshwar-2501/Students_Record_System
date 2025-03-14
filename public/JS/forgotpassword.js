@@ -21,7 +21,7 @@ document.getElementById('forgotPasswordForm').addEventListener('submit', async (
 
     try {
         // Send POST request to the forgot password endpoint
-        const response = await fetch('/forgotpassword', {
+        const response = await fetch('/forgotPassword', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -40,7 +40,7 @@ document.getElementById('forgotPasswordForm').addEventListener('submit', async (
 
             // Redirect to reset password page after a delay
             setTimeout(() => {
-                window.location.href = '/resetpassword';
+                window.location.href = '/resetPassword';
             }, 2000);
         } else {
             // Parse and display error message

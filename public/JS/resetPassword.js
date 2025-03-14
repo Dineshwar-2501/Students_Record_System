@@ -6,7 +6,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async (e
   const newPassword = document.getElementById('newPassword').value;
 
   try {
-      const response = await fetch('/resetpassword', {
+      const response = await fetch('/resetPassword', {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
