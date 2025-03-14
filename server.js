@@ -170,8 +170,8 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/registerStudent', (req, res) => res.sendFile(path.join(__dirname, 'public', 'registerStudent.html')));
 app.get('/registerProctor', (req, res) => res.sendFile(path.join(__dirname, 'public', 'registerProctor.html')));
-app.get('/forgotpassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgotpassword.html')));
-app.get('/resetpassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'resetpassword.html')));
+app.get('/forgotPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgotPassword.html')));
+app.get('/resetPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'resetPassword.html')));
 app.get('/proctorDashboard', (req, res) => {
     console.log('Accessing Proctor Dashboard. Session Info:', req.session);
     
@@ -388,7 +388,7 @@ app.post('/login', async (req, res) => {
         return res.status(500).json({ message: 'An error occurred, please try again.' });
     }
 });
-app.post('/forgotpassword', forgotPasswordLimiter, async (req, res) => {
+app.post('/forgotPassword', forgotPasswordLimiter, async (req, res) => {
     const { email, role } = req.body;
 
     // Validate role
@@ -434,7 +434,7 @@ app.post('/forgotpassword', forgotPasswordLimiter, async (req, res) => {
         return res.status(500).send('Server error');
     }
 });
-app.post('/resetpassword', async (req, res) => {
+app.post('/resetPassword', async (req, res) => {
     const { email, role, code, newPassword } = req.body;
 
     // Check if required fields are present
