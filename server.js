@@ -2,11 +2,10 @@ require('dotenv').config();// Load environment variables from .env file
 require('./jobs/scheduler');// Load scheduler of students year
 
 // Required modules
-const RedisStore = require("connect-redis").default;
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const session = require('express-session');
+// const session = require('express-session');
 const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
 const path = require('path');
@@ -21,54 +20,49 @@ const crypto = require("crypto");
 const router = express.Router();
 const PORT = process.env.PORT || 3000;
 const saltRounds = 10;
+// const app = express();
 const studentRoutes = require("./routes/StudentRoutes");
 const rateLimiter = require('express-rate-limit'); 
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
 const { createClient } = require("redis");
+const RedisStore = require("connect-redis"); // ❌ No `.default` in v8
+const session = require("express-session");
+
 const app = express();
 
-// Middleware Setup
-
-
+// ✅ Create Redis Client
 const redisClient = createClient({
-    url: process.env.REDIS_URL // Use Railway's Redis URL
-  });
-  redisClient.connect().catch(console.error);
+  url: process.env.REDIS_URL, // Use Railway's Redis URL
+});
+redisClient.connect().catch(console.error);
+
 // ✅ Debugging Redis Connection
-
-
 redisClient.on("error", (err) => console.error("❌ Redis Client Error:", err));
 redisClient.on("connect", () => console.log("✅ Redis connected successfully!"));
 
-
+// ✅ Correct way to use RedisStore in `connect-redis@8`
 const redisStore = new RedisStore({
   client: redisClient,
   prefix: "session:", // Optional, helps organize Redis keys
 });
 
-app.use(cookieParser());
-app.use(cors({ origin: "*" }));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-// Use Redis store in session middleware
+// ✅ Use Redis store in session middleware
 app.use(
-    session({
-      store: redisStore,
-      secret: process.env.SESSION_SECRET,
-      resave: false,
-      saveUninitialized: true,
-      cookie: { 
-        secure: process.env.NODE_ENV === "production", 
-        httpOnly: true, 
-        maxAge: 3600000 
-      }
-    })
-  );
+  session({
+    store: redisStore,
+    secret: process.env.SESSION_SECRET || "supersecretkey",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production", // HTTPS only in production
+      httpOnly: true,
+      maxAge: 3600000, // 1 hour
+    },
+  })
+);
+
+console.log("✅ Redis session store connected!");
 
 if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
@@ -107,7 +101,13 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: fileFilter, // Allow up to 5MB files
 });
-
+app.use(cookieParser());
+app.use(cors({ origin: "*" }));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/", studentRoutes); // Use student routes
 app.use("/uploads", express.static(path.join(__dirname, 'uploads')));
 app.use(proctorRoutes);
