@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const db = require('../config/database'); // Assuming you have a database connection setup
+const db = require('../database'); // Assuming you have a database connection setup
 
 // Function to promote students to the next year in June
 const updateStudentsYear = async () => {

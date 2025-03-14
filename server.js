@@ -27,14 +27,14 @@ const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
 const session = require("express-session");
 const { createClient } = require("redis");
-const RedisStore = require("connect-redis")(session); // ✅ Correct usage
+const RedisStore = require("connect-redis").default; // ✅ Correct for v8+
 
 const app = express();
 
 // ✅ Create Redis Client
 const redisClient = createClient({
   url: process.env.REDIS_URL,
-  legacyMode: true, // ✅ Important for some Redis versions
+  legacyMode: true, // ✅ Important for compatibility
 });
 redisClient.connect().catch(console.error);
 
@@ -42,7 +42,7 @@ redisClient.connect().catch(console.error);
 redisClient.on("error", (err) => console.error("❌ Redis Client Error:", err));
 redisClient.on("connect", () => console.log("✅ Redis connected successfully!"));
 
-// ✅ Correct way to initialize RedisStore
+// ✅ Correct RedisStore initialization
 const redisStore = new RedisStore({
   client: redisClient,
   prefix: "session:", // Optional
