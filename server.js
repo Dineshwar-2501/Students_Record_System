@@ -32,10 +32,16 @@ const { createClient } = require("redis");
 const redisClient = createClient();
 redisClient.connect().catch(console.error);
 
+// ✅ Correct way to use RedisStore in connect-redis v7+
+const redisStore = new RedisStore({
+  client: redisClient,
+  prefix: "session:", // Optional, helps organize Redis keys
+});
+
 // Use Redis store in session middleware
 app.use(
   session({
-    store: new RedisStore({ client: redisClient }), // ✅ Correct syntax
+    store: redisStore,
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
