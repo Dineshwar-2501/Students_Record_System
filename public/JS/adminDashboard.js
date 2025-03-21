@@ -313,7 +313,7 @@ $(document).ready(function () {
             console.log("🔥 Final Proctor Assignment Data:", {
                 proctor_id: assignProctorId,
                 students: selectedStudents
-            }); // Debugging log
+            }); 
         
             if (!assignProctorId) {
                 alert("Please select a proctor before assigning students.");
