@@ -140,6 +140,7 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/registerStudent', (req, res) => res.sendFile(path.join(__dirname, 'public', 'registerStudent.html')));
 app.get('/registerProctor', (req, res) => res.sendFile(path.join(__dirname, 'public', 'registerProctor.html')));
+app.get('/registerAdmin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'registerAdmin.html')));
 app.get('/forgotPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgotPassword.html')));
 app.get('/resetPassword', (req, res) => res.sendFile(path.join(__dirname, 'public', 'resetPassword.html')));
 app.get('/proctorDashboard', (req, res) => {
@@ -183,8 +184,6 @@ app.post("/logout", (req, res) => {
         res.status(200).json({ message: "Logged out successfully" });
     });
 });
-
-
 app.post('/registerStudent', async (req, res) => {
     try {
         console.log("🔥 Received Student Registration Data:", req.body); // Debugging log
@@ -251,26 +250,62 @@ app.post('/registerProctor', async (req, res) => {
         res.status(500).json({ message: "Error registering proctor." });
     }
 });
+app.post('/registerAdmin', async (req, res) => {
+    try {
+        console.log("🔥 Received admin Registration Data:", req.body); // Debugging log
+
+        const { username, email, password ,department } = req.body;
+
+        if (!username || !email  || !password || !department) {
+            console.error("❌ Error: Missing required fields!");
+            return res.status(400).json({ message: "All fields are required!" });
+        }
+
+        // ✅ Check if the admin already exists
+        const [existingAdmin] = await db.execute("SELECT * FROM admins WHERE email = ? ", [email]);
+        if (existingAdmin.length > 0) {
+            return res.status(400).json({ message: "Admin already registered!" });
+        }
+
+        // ✅ Hash password before storing
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // ✅ Insert new admin
+        await db.execute(
+            "INSERT INTO admins(username, email,  password,department) VALUES (?, ?, ?, ?)",
+            [username, email, hashedPassword,department]
+        );
+
+        res.status(201).json({ message: "Admin registered successfully!" });
+
+    } catch (error) {
+        console.error("❌ Error registering ADmin:", error);
+        res.status(500).json({ message: "Error registering ADmin." });
+    }
+});
 app.post('/login', async (req, res) => {
-    const { email, password, role, rememberMe } = req.body;
-    console.log('Login attempt:', { email, role });
+    const { email, username, password, role, rememberMe } = req.body;
+    console.log('Login attempt:', { identifier: role === 'admin' ? username : email, role });
 
     try {
-        let query;
+        let query, identifier;
 
         // Determine user role query
         if (role === 'student') {
             query = 'SELECT * FROM students WHERE email = ?';
+            identifier = email;
         } else if (role === 'proctor') {
             query = 'SELECT * FROM proctors WHERE email = ?';
+            identifier = email;
         } else if (role === 'admin') {
-            query = 'SELECT * FROM admins WHERE email = ?';
+            query = 'SELECT * FROM admins WHERE email = ?'; // ✅ Admin logs in with username
+            identifier = email;
         } else {
             return res.status(400).json({ message: 'Invalid role selected!' });
         }
 
         // Fetch user from database
-        const [rows] = await db.execute(query, [email]);
+        const [rows] = await db.execute(query, [identifier]);
         if (rows.length === 0) {
             return res.status(400).json({ message: 'User not found!' });
         }
@@ -295,7 +330,7 @@ app.post('/login', async (req, res) => {
         }
 
         if (!match) {
-            console.log(`Invalid password attempt for user: ${email}`);
+            console.log(`Invalid password attempt for user: ${identifier}`);
             return res.status(400).json({ message: 'Invalid password!' });
         }
 
@@ -343,9 +378,8 @@ app.post('/login', async (req, res) => {
         console.error('Error logging in:', error);
         return res.status(500).json({ message: 'An error occurred, please try again.' });
     }
-
-
 });
+
 
 app.post('/restoreSession', async (req, res) => {
     const { sessionId } = req.body;

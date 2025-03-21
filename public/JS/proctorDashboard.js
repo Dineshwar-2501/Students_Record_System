@@ -1,3 +1,14 @@
+function showLoader() {
+    const loaderOverlay = document.getElementById('loader-overlay');
+    loaderOverlay.style.display = 'flex';
+  }
+  
+  function hideLoader() {
+    const loaderOverlay = document.getElementById('loader-overlay');
+    loaderOverlay.style.display = 'none';
+  }
+  
+
 $(document).ready(async function () {
     await loadAssignedStudents();
 
@@ -91,29 +102,34 @@ $(document).ready(async function () {
     // 📌 Load Student Data When Sidebar Student Clicked
     $(document).on('click', '.student-item', function () {
         const studentId = $(this).data('id');
+        showLoader();
         loadStudentWorkspace(studentId);
-
+        
         // 📌 Hide Sidebar & Expand Workspace
         sidebar.removeClass('open').addClass('closed').css("left", "-250px");
         workspaceToggleButton.removeClass('hidden');
+        hideLoader();
     });
     document.getElementById("assign-marks-button").addEventListener("click", async () => {
         try {
+            showLoader();
             const response = await fetch("/assignStudentMarks", { method: "POST" });
-    
             if (response.ok) {
                 const data = await response.json();
-                alert(`✅ Marks assigned! ${data.message}`);
+                console.log(`✅ Marks assigned! ${data.message}`);
                 
                 // Reload the page after successful update
                 location.reload();
+                hideLoader();
             } else {
                 const errorData = await response.json();
-                alert(`❌ Failed to assign marks: ${errorData.message}`);
+                console.log(`❌ Failed to assign marks: ${errorData.message}`);
+                hideLoader();
             }
         } catch (error) {
             console.error("❌ Error assigning marks:", error.message);
-            alert("Internal server error.");
+            console.log("Internal server error.");
+            hideLoader();
         }
     });
     
@@ -182,11 +198,12 @@ $(document).ready(async function () {
     
         // Basic validation
         if (!formData.name || !formData.email || !formData.designation || !formData.phone_number) {
-            alert("Please fill out all fields before submitting.");
+            console.log("Please fill out all fields before submitting.");
             return;
         }
     
         try {
+            showLoader();
             const response = await fetch('/updateProctorProfile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -195,13 +212,15 @@ $(document).ready(async function () {
     
             const result = await response.json();
             if (!response.ok) throw new Error(result.message || "Update failed");
-    
-            alert(result.message || 'Profile updated successfully.');
+            
+            console.log(result.message || 'Profile updated successfully.');
+            hideLoader();
             $('#profile-modal').hide();
             loadProctorProfile(); // Reload profile data
         } catch (error) {
             console.error('Error updating profile:', error);
-            alert('Failed to update profile. Please try again.');
+            console.log('Failed to update profile. Please try again.');
+            hideLoader();
         }
     });
     
@@ -227,9 +246,9 @@ document.getElementById('uploadCSVForm').addEventListener('submit', function (ev
     event.preventDefault();
     
     const fileInput = document.getElementById('marksFile');
-    if (!fileInput.files.length) return  alert("Please select a CSV file before uploading.");
+    if (!fileInput.files.length) return  console.log("Please select a CSV file before uploading.");
      
-
+    showLoader();
     const formData = new FormData();
     formData.append("marksFile", fileInput.files[0]); // Ensure the key matches the backend
 
@@ -240,11 +259,13 @@ document.getElementById('uploadCSVForm').addEventListener('submit', function (ev
         processData: false,
         contentType: false,
         success: function (response) {
-            alert(response.message || "Marks uploaded successfully!"); 
+            console.log(response.message || "Marks uploaded successfully!"); 
             location.reload(); // 🔹 Refresh the page after success
+            hideLoader();
         },
         error: function (xhr) {
-            alert(xhr.responseText || "Error uploading file.");
+            console.log(xhr.responseText || "Error uploading file.");
+            hideLoader();
         }
     });
 });
@@ -253,6 +274,7 @@ document.getElementById('uploadCSVForm').addEventListener('submit', function (ev
     // 📌 Load Assigned Students for Proctor
     async function loadAssignedStudents() {
         try {
+            
             const response = await fetch('/getAssignedStudents');
             const { proctorName, designation, students } = await response.json();
 
@@ -298,11 +320,13 @@ document.getElementById('uploadCSVForm').addEventListener('submit', function (ev
 });
 async function loadStudentWorkspace(studentId) {
     try {
+        
         const response = await fetch(`/getStudentAcademicRecord/${studentId}`);
         const { student, subjects } = await response.json();
 
         if (!student || !subjects) {
             throw new Error("Invalid student data received.");
+            
         }
 
         const workspace = $('#student-workspace');
@@ -412,7 +436,7 @@ async function loadStudentWorkspace(studentId) {
             const regid = student.regid;
         
             if (!regid) {
-                alert("Error: Registration ID is missing!");
+                console.log("Error: Registration ID is missing!");
                 console.error("🚨 Missing regid");
                 return;
             }
@@ -443,7 +467,7 @@ async function loadStudentWorkspace(studentId) {
             });
         
             if (updatedData.length === 0) {
-                alert("No changes detected.");
+                console.log("No changes detected.");
                 console.warn("⚠️ No valid updates to send.");
                 return;
             }
@@ -451,6 +475,7 @@ async function loadStudentWorkspace(studentId) {
             console.log("✅ Sending Data:", JSON.stringify({ regid, semester: sem, updatedData }, null, 2));
         
             try {
+                showLoader();
                 const response = await fetch('/updateStudentMarks', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -459,19 +484,23 @@ async function loadStudentWorkspace(studentId) {
         
                 const result = await response.json();
                 if (response.ok) {
-                    alert('Marks updated successfully!');
+                    console.log('Marks updated successfully!');
                     console.log("✅ Update Success:", result);
-        
+                    
                     // ✅ Call updateGpaCgpa AFTER marks are updated
                     await updateGpaCgpa(regid);
                     console.log("✅ GPA & CGPA updated successfully!");
+                    hideLoader();
                 } else {
+                    hideLoader();
                     throw new Error(result.message || 'Unknown error occurred.');
+                    
                 }
         
             } catch (error) {
-                alert('Failed to update marks.');
+                console.log('Failed to update marks.');
                 console.error("❌ Error updating marks:", error);
+                hideLoader();
             }
         
             $(this).hide();
@@ -481,7 +510,7 @@ async function loadStudentWorkspace(studentId) {
         
 
     } catch (error) {
-        alert('Failed to load student data.');
+        console.log('Failed to load student data.');
         console.error("❌ Error loading workspace:", error);
     }
 }

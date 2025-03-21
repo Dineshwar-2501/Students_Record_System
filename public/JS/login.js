@@ -10,10 +10,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const loginForm = document.getElementById("loginForm");
 
     // ✅ Default role: Admin
-    selectedRoleInput.value = "admin";
-    adminButton.classList.add("selected");
+    selectedRoleInput.value = "proctor";
+    adminButton.classList.add("deselected");
     studentButton.classList.add("deselected");
-    proctorButton.classList.add("deselected");
+    proctorButton.classList.add("selected");
 
     // ✅ Remember Me: Load saved email
     if (emailInput && rememberMeCheckbox) {
@@ -77,19 +77,19 @@ document.addEventListener("DOMContentLoaded", () => {
             if (rememberMe) {
                 localStorage.setItem("rememberMe", "true");
                 localStorage.setItem("rememberedEmail", email);
+                
+                // ✅ Store session in IndexedDB (ONLY if Remember Me is checked)
+                await saveSessionToDB({
+                    email,
+                    role,
+                    userId: data.userId,
+                    department: data.department || 'N/A',
+                    redirectUrl: data.redirectUrl
+                });
             } else {
                 localStorage.removeItem("rememberMe");
                 localStorage.removeItem("rememberedEmail");
             }
-
-            // ✅ Store session in IndexedDB (ONLY if login is successful)
-            await saveSessionToDB({
-                email,
-                role,
-                userId: data.userId,
-                department: data.department || 'N/A',
-                redirectUrl: data.redirectUrl
-            });
 
             // ✅ Redirect user to dashboard
             const redirectURL = data.redirectUrl || {
@@ -111,13 +111,17 @@ document.addEventListener("DOMContentLoaded", () => {
     async function saveSessionToDB(sessionData) {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open("UserSessionDB", 1);
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains("sessions")) {
+                    db.createObjectStore("sessions", { keyPath: "id" });
+                }
+            };
             request.onsuccess = (event) => {
                 const db = event.target.result;
                 const tx = db.transaction("sessions", "readwrite");
                 const store = tx.objectStore("sessions");
-
                 const saveRequest = store.put({ id: "userSession", ...sessionData });
-
                 saveRequest.onsuccess = () => {
                     console.log("✅ Session saved in IndexedDB");
                     resolve();
