@@ -410,70 +410,75 @@ async function loadStudentWorkspace(studentId) {
         $('.save-marks-btn').click(async function () {
             const sem = $(this).data('sem');
             const regid = student.regid;
-
+        
             if (!regid) {
                 alert("Error: Registration ID is missing!");
                 console.error("🚨 Missing regid");
                 return;
             }
-
+        
             const rows = $(`#tab-${sem} tbody tr`);
             let updatedData = [];
-
+        
             rows.each(function () {
                 let row = $(this);
                 let subjectCode = row.data('subject-code');
                 let changes = { subject_code: subjectCode };
                 let hasChanges = false;
-
+        
                 ['attendance1', 'attendance2', 'test1', 'test2', 'internal_marks', 'grades'].forEach(field => {
                     let cell = row.find(`.edit-${field}`);
                     let newValue = cell.text().trim();
                     let originalValue = cell.attr('data-original');
-
+        
                     if (newValue !== originalValue) {
                         changes[field] = newValue !== "" ? newValue : originalValue;
                         hasChanges = true;
                     }
                 });
-
+        
                 if (hasChanges) {
                     updatedData.push(changes);
                 }
             });
-
+        
             if (updatedData.length === 0) {
                 alert("No changes detected.");
                 console.warn("⚠️ No valid updates to send.");
                 return;
             }
-
+        
             console.log("✅ Sending Data:", JSON.stringify({ regid, semester: sem, updatedData }, null, 2));
-
+        
             try {
                 const response = await fetch('/updateStudentMarks', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ regid, semester: sem, updatedData })
                 });
-
+        
                 const result = await response.json();
                 if (response.ok) {
                     alert('Marks updated successfully!');
                     console.log("✅ Update Success:", result);
+        
+                    // ✅ Call updateGpaCgpa AFTER marks are updated
+                    await updateGpaCgpa(regid);
+                    console.log("✅ GPA & CGPA updated successfully!");
                 } else {
                     throw new Error(result.message || 'Unknown error occurred.');
                 }
-
+        
             } catch (error) {
                 alert('Failed to update marks.');
                 console.error("❌ Error updating marks:", error);
             }
-
+        
             $(this).hide();
             $(`.edit-marks-btn[data-sem='${sem}']`).show();
             $(`#tab-${sem} td[class^="edit-"]`).attr('contenteditable', 'false');
         });
+        
 
     } catch (error) {
         alert('Failed to load student data.');

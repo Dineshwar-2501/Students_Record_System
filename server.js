@@ -18,54 +18,13 @@ const db = require('./config/database');
 const csv = require('csv-parser');
 const crypto = require("crypto");
 const router = express.Router();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000 ||5000;
 const saltRounds = 10;
 const app = express();
 const studentRoutes = require("./routes/StudentRoutes");
 const rateLimiter = require('express-rate-limit'); 
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
-// const session = require("express-session");
-// const { createClient } = require("redis");
-// const RedisStore = require("connect-redis").default; // ✅ Correct for v8+
-
-// const app = express();
-
-// // ✅ Create Redis Client
-// const redisClient = createClient({
-//   url: process.env.REDIS_URL,
-//   legacyMode: true, // ✅ Important for compatibility
-// });
-// redisClient.connect().catch(console.error);
-
-// // ✅ Debugging Redis Connection
-// redisClient.on("error", (err) => console.error("❌ Redis Client Error:", err));
-// redisClient.on("connect", () => console.log("✅ Redis connected successfully!"));
-
-// // ✅ Correct RedisStore initialization
-// const redisStore = new RedisStore({
-//   client: redisClient,
-//   prefix: "session:", // Optional
-// });
-
-// // ✅ Use Redis store in session middleware
-// app.use(
-//   session({
-//     store: redisStore,
-//     secret: process.env.SESSION_SECRET || "supersecretkey",
-//     resave: false,
-//     saveUninitialized: false,
-//     cookie: {
-//       secure: process.env.NODE_ENV === "production", // HTTPS only in production
-//       httpOnly: true,
-//       maxAge: 3600000, // 1 hour
-// sameSite: "None"  // ✅ Fix cross-site cookie issue
-
-//     },
-//   })
-// );
-
-// console.log("✅ Redis session store connected!");
 
 
 if (!fs.existsSync('uploads')) {
@@ -108,6 +67,7 @@ const upload = multer({
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+// app.use(express.static("public")); // Serve the public folder
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -118,7 +78,10 @@ app.use(proctorRoutes);
 app.use(cors({
     origin: "*",  // Allow all origins (for testing)
     methods: "GET,POST,PUT,DELETE",
-    allowedHeaders: "Content-Type,Authorization"
+    allowedHeaders: "Content-Type,Authorization",
+    credentials: true, 
+    origin: "https://studentsrecordsystem-production.up.railway.app" 
+    // origin: "http://localhost:3000" 
 }));
 
 app.use((err, req, res, next) => {
@@ -135,7 +98,7 @@ app.use(session({
     cookie: { 
         secure: false,  // Set to true if using HTTPS
         httpOnly: true, 
-        maxAge: 3600000 
+        maxAge: 24 * 60 * 60 * 1000 //1day
     }
 }));
 
@@ -214,16 +177,14 @@ app.get('/studentDashboard', (req, res) => {
 });
 
 // ─────────────────────────────────AUTHENTICATION───────────────────────────────────────────────────
-
-app.get('/logout', (req, res) => {
-    req.session.destroy(err => {
-        if (err) {
-            console.error('Error logging out:', err);
-            return res.status(500).send('Error logging out');
-        }
-        res.redirect('/login');
+app.post("/logout", (req, res) => {
+    res.clearCookie("token");  // ✅ Clear token cookie
+    req.session.destroy(() => {
+        res.status(200).json({ message: "Logged out successfully" });
     });
 });
+
+
 app.post('/registerStudent', async (req, res) => {
     try {
         console.log("🔥 Received Student Registration Data:", req.body); // Debugging log
@@ -291,14 +252,13 @@ app.post('/registerProctor', async (req, res) => {
     }
 });
 app.post('/login', async (req, res) => {
-    const { email, pswd, role, rememberMe } = req.body;
+    const { email, password, role, rememberMe } = req.body;
     console.log('Login attempt:', { email, role });
 
     try {
-        let user;
         let query;
 
-        // Fetch user based on the role
+        // Determine user role query
         if (role === 'student') {
             query = 'SELECT * FROM students WHERE email = ?';
         } else if (role === 'proctor') {
@@ -309,92 +269,108 @@ app.post('/login', async (req, res) => {
             return res.status(400).json({ message: 'Invalid role selected!' });
         }
 
+        // Fetch user from database
         const [rows] = await db.execute(query, [email]);
-        user = rows[0];
-
-        console.log('Retrieved user:', user);
-
-        if (!user) {
+        if (rows.length === 0) {
             return res.status(400).json({ message: 'User not found!' });
         }
 
-        if (!pswd) {
+        const user = rows[0];
+
+        // Validate password
+        let match = false;
+        if (!password) {
             return res.status(400).json({ message: 'Password is required!' });
         }
 
-        let match = false;
-
-        // 🔹 Students & Proctors - Use bcrypt only
-        if (role === 'student' || role === 'proctor') {
-            match = await bcrypt.compare(pswd, user.password);
-        }
-
-        // 🔹 Admins - Try bcrypt first, then SHA-256
         if (role === 'admin') {
             if (user.password.startsWith("$2b$")) {
-                // Password is bcrypt-hashed, compare using bcrypt
-                match = await bcrypt.compare(pswd, user.password);
+                match = await bcrypt.compare(password, user.password);
             } else {
-                // Password is SHA-256 hashed, compare using SHA2()
-                const sha256Hash = crypto.createHash("sha256").update(pswd).digest("hex");
+                const sha256Hash = crypto.createHash("sha256").update(password).digest("hex");
                 match = sha256Hash === user.password;
             }
+        } else {
+            match = await bcrypt.compare(password, user.password);
         }
 
-        console.log('User Password Hash:', user.password);
-        console.log('Entered Password:', pswd);
-
-        if (match) {
-            // Store user ID and role in session
-            if (role === 'proctor') {
-                req.session.userId = user.proctor_id;
-                req.session.proctor_id = user.proctor_id;
-            } else if (role === 'student') {
-                req.session.userId = user.student_id;
-            } else if (role === 'admin') {
-                req.session.userId = user.admin_id;
-                req.session.admin_id = user.admin_id;  // Ensure admin_id is stored
-                req.session.department = user.department || null; // Store department for admins
-            }
-
-            req.session.role = role;
-
-            // Set cookie expiration based on 'rememberMe'
-            req.session.cookie.maxAge = rememberMe 
-                ? 30 * 24 * 60 * 60 * 1000  // 30 days
-                : 1 * 60 * 60 * 1000;  // 1 hour
-
-            // Define redirection URL based on role
-            let redirectUrl = role === 'student' ? '/studentDashboard' :
-                              role === 'proctor' ? '/proctorDashboard' :
-                              '/adminDashboard';
-
-            const responseUserId = role === 'proctor' ? user.proctor_id : 
-                                   role === 'student' ? user.student_id : 
-                                   user.admin_id;
-
-            req.session.save(() => {
-                console.log('Session after login:', req.session);
-                res.status(200).json({
-                    success: true,
-                    role,
-                    message: 'Login successful!',
-                    redirectUrl,
-                    userId: responseUserId,
-                    department: req.session.department || 'N/A' // Return department info if available
-                });
-            });
-
-        } else {
+        if (!match) {
             console.log(`Invalid password attempt for user: ${email}`);
             return res.status(400).json({ message: 'Invalid password!' });
         }
+
+        // Store session data
+        req.session.userId = role === 'student' ? user.student_id :
+                             role === 'proctor' ? user.proctor_id :
+                             user.admin_id;
+
+        if (role === 'proctor') req.session.proctor_id = user.proctor_id;
+        if (role === 'admin') {
+            req.session.admin_id = user.admin_id;
+            req.session.department = user.department || null;
+        }
+
+        req.session.role = role;
+
+        // Set session expiration
+        req.session.cookie.maxAge = rememberMe 
+            ? 30 * 24 * 60 * 60 * 1000  // 30 days
+            : 1 * 60 * 60 * 1000;  // 1 hour
+
+        // Save session before responding
+        req.session.save(err => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ message: 'Session error, try again.' });
+            }
+
+            // Respond with login success & redirect URL
+            const sessionId = req.sessionID;  // Get session ID
+            res.status(200).json({
+                success: true,
+                message: 'Login successful!',
+                role,
+                sessionId,  // Send session ID for persistent login
+                redirectUrl: role === 'student' ? '/studentDashboard' :
+                             role === 'proctor' ? '/proctorDashboard' :
+                             '/adminDashboard',
+                userId: req.session.userId,
+                department: req.session.department || 'N/A'
+            });
+        });
 
     } catch (error) {
         console.error('Error logging in:', error);
         return res.status(500).json({ message: 'An error occurred, please try again.' });
     }
+
+
 });
+
+app.post('/restoreSession', async (req, res) => {
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+        return res.status(400).json({ message: 'No session ID provided' });
+    }
+
+    // Restore session
+    req.sessionStore.get(sessionId, (err, session) => {
+        if (err || !session) {
+            return res.status(401).json({ message: 'Session expired' });
+        }
+
+        req.session = session;  // Restore session in req
+        res.json({
+            success: true,
+            message: 'Session restored',
+            redirectUrl: session.role === 'student' ? '/studentDashboard' :
+                         session.role === 'proctor' ? '/proctorDashboard' :
+                         '/adminDashboard'
+        });
+    });
+});
+
 app.post('/forgotPassword', forgotPasswordLimiter, async (req, res) => {
     const { email, role } = req.body;
 

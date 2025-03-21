@@ -1,114 +1,136 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const proctorButton = document.getElementById('proctorButton');
-    const studentButton = document.getElementById('studentButton');
-    const adminButton = document.getElementById('adminButton');
-    const selectedRoleInput = document.getElementById('selectedRole');
-    const togglePassword = document.getElementById('togglePassword');
-    const passwordInput = document.getElementById('password');
-    const rememberMeCheckbox = document.getElementById('rememberMe');
-    const emailInput = document.getElementById('email');
+document.addEventListener("DOMContentLoaded", () => {
+    const proctorButton = document.getElementById("proctorButton");
+    const studentButton = document.getElementById("studentButton");
+    const adminButton = document.getElementById("adminButton");
+    const selectedRoleInput = document.getElementById("selectedRole");
+    const togglePassword = document.getElementById("togglePassword");
+    const passwordInput = document.getElementById("password");
+    const rememberMeCheckbox = document.getElementById("rememberMe");
+    const emailInput = document.getElementById("email");
+    const loginForm = document.getElementById("loginForm");
 
-    // Set initial state
-    studentButton.classList.add('deselected'); // Make the student button dim by default
+    // ✅ Default role: Admin
+    selectedRoleInput.value = "admin";
+    adminButton.classList.add("selected");
+    studentButton.classList.add("deselected");
+    proctorButton.classList.add("deselected");
 
-    // Load saved email and remember me status
-    const savedEmail = localStorage.getItem('rememberedEmail');
-    const rememberMeChecked = localStorage.getItem('rememberMeChecked');
-    if (savedEmail && rememberMeChecked === 'true') {
-        emailInput.value = savedEmail;
-        rememberMeCheckbox.checked = true;
+    // ✅ Remember Me: Load saved email
+    if (emailInput && rememberMeCheckbox) {
+        if (localStorage.getItem("rememberMe") === "true") {
+            emailInput.value = localStorage.getItem("rememberedEmail") || "";
+            rememberMeCheckbox.checked = true;
+        }
     }
 
-    // Role selection toggle
-    proctorButton.addEventListener('click', () => {
-        proctorButton.classList.add('selected');
-        proctorButton.classList.remove('deselected'); // Remove dim class
-        studentButton.classList.remove('selected');
-        studentButton.classList.add('deselected'); 
-        adminButton.classList.remove('selected');
-        adminButton.classList.add('deselected');// Add dim class
-        selectedRoleInput.value = 'proctor'; // Set the selected role
+    // ✅ Role selection function
+    function selectRole(role, selectedButton) {
+        selectedRoleInput.value = role;
+
+        [adminButton, proctorButton, studentButton].forEach((btn) => {
+            btn.classList.toggle("selected", btn === selectedButton);
+            btn.classList.toggle("deselected", btn !== selectedButton);
+        });
+    }
+
+    adminButton.addEventListener("click", () => selectRole("admin", adminButton));
+    proctorButton.addEventListener("click", () => selectRole("proctor", proctorButton));
+    studentButton.addEventListener("click", () => selectRole("student", studentButton));
+
+    // ✅ Password visibility toggle
+    togglePassword.addEventListener("click", () => {
+        passwordInput.type = passwordInput.type === "password" ? "text" : "password";
+        togglePassword.textContent = passwordInput.type === "password" ? "👁️" : "🙈";
     });
 
-    studentButton.addEventListener('click', () => {
-        studentButton.classList.add('selected');
-        studentButton.classList.remove('deselected'); // Remove dim class
-        proctorButton.classList.remove('selected');
-        proctorButton.classList.add('deselected'); 
-        adminButton.classList.remove('selected');
-        adminButton.classList.add('deselected');// Add dim class
-        selectedRoleInput.value = 'student'; // Set the selected role
-    });
+    // ✅ Handle login form submission
+    loginForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
 
-    adminButton.addEventListener('click', () => {
-        adminButton.classList.add('selected');
-        adminButton.classList.remove('deselected'); // Remove dim class
-        proctorButton.classList.remove('selected');
-        proctorButton.classList.add('deselected'); 
-        studentButton.classList.remove('selected');
-        studentButton.classList.add('deselected');// Add dim class
-        selectedRoleInput.value = 'admin'; // Set the selected role
-    });
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+        const role = selectedRoleInput.value.trim();
+        const rememberMe = rememberMeCheckbox.checked;
 
-    // Password visibility toggle
-    togglePassword.addEventListener('click', () => {
-        if (passwordInput.type === 'password') {
-            passwordInput.type = 'text';
-            togglePassword.textContent = '🙈'; // Change icon to closed-eye
-        } else {
-            passwordInput.type = 'password';
-            togglePassword.textContent = '👁️'; // Change icon to open-eye
-        }
-    });
-
-    // Handle form submission
-    document.getElementById('loginForm').addEventListener('submit', async (event) => {
-        event.preventDefault(); // Prevent default form submission
-
-        const email = emailInput.value;
-        const password = passwordInput.value;
-
-        // Store email if "Remember Me" is checked
-        if (rememberMeCheckbox.checked) {
-            localStorage.setItem('rememberedEmail', email);
-            localStorage.setItem('rememberMeChecked', 'true');
-        } else {
-            localStorage.removeItem('rememberedEmail');
-            localStorage.removeItem('rememberMeChecked');
+        if (!email || !password || !role) {
+            alert("⚠️ All fields are required!");
+            return;
         }
 
-        // Fetch request for login
         try {
-            // const response = await fetch('http://localhost:5000/login', {
-            const response = await fetch('https://studentsrecordsystem-production.up.railway.app/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email,          // shorthand for email: email
-                    pswd: password, // shorthand for password: password
-                    role: selectedRoleInput.value,
-                    rememberMe: rememberMeCheckbox.checked,
-                }),
-                credentials: 'include',
+            const response = await fetch('/login', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password, role, rememberMe }),
+                credentials: "include"
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP error: ${response.status}`);
             }
 
             const data = await response.json();
+            console.log("✅ Login Successful:", data);
 
-            if (data.success) {
-                // Redirect to the dashboard page based on role
-                window.location.href = data.redirectUrl;
+            // ✅ Store "Remember Me" preference
+            if (rememberMe) {
+                localStorage.setItem("rememberMe", "true");
+                localStorage.setItem("rememberedEmail", email);
             } else {
-                alert(data.message); // Display error message if login fails
+                localStorage.removeItem("rememberMe");
+                localStorage.removeItem("rememberedEmail");
             }
+
+            // ✅ Store session in IndexedDB (ONLY if login is successful)
+            await saveSessionToDB({
+                email,
+                role,
+                userId: data.userId,
+                department: data.department || 'N/A',
+                redirectUrl: data.redirectUrl
+            });
+
+            // ✅ Redirect user to dashboard
+            const redirectURL = data.redirectUrl || {
+                student: "/studentDashboard",
+                proctor: "/proctorDashboard",
+                admin: "/adminDashboard",
+            }[role];
+
+            if (!redirectURL) throw new Error("No redirect URL provided");
+            window.location.href = redirectURL;
+
         } catch (error) {
-            console.error('Error:', error);
-            alert("An error occurred during login. Please try again.");
+            console.error("❌ Login failed:", error);
+            alert(error.message || "Login failed. Please check your credentials.");
         }
     });
+
+    // ✅ Function to store session safely
+    async function saveSessionToDB(sessionData) {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open("UserSessionDB", 1);
+            request.onsuccess = (event) => {
+                const db = event.target.result;
+                const tx = db.transaction("sessions", "readwrite");
+                const store = tx.objectStore("sessions");
+
+                const saveRequest = store.put({ id: "userSession", ...sessionData });
+
+                saveRequest.onsuccess = () => {
+                    console.log("✅ Session saved in IndexedDB");
+                    resolve();
+                };
+                saveRequest.onerror = (err) => {
+                    console.error("❌ Error saving session:", err);
+                    reject(err);
+                };
+            };
+            request.onerror = (err) => {
+                console.error("❌ IndexedDB error:", err);
+                reject(err);
+            };
+        });
+    }
 });
