@@ -80,8 +80,8 @@ app.use(cors({
     methods: "GET,POST,PUT,DELETE",
     allowedHeaders: "Content-Type,Authorization",
     credentials: true, 
-    origin: "https://studentsrecordsystem-production.up.railway.app" 
-    // origin: "http://localhost:3000" 
+    // origin: "https://studentsrecordsystem-production.up.railway.app" 
+    origin: "http://localhost:3000" 
 }));
 
 app.use((err, req, res, next) => {
@@ -1502,8 +1502,8 @@ router.use((req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-    // console.log(`Server is running on http://localhost:${PORT}`);
-    console.log(`Server is running on Railway : ${PORT}`);
+    console.log(`Server is running on http://localhost:${PORT}`);
+    // console.log(`Server is running on Railway : ${PORT}`);
 });
 
 module.exports = app;

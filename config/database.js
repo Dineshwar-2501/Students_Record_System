@@ -3,7 +3,7 @@ require('dotenv').config(); // Load environment variables
 
 // Ensure DATABASE_URL is correctly set in Railway
 const pool = mysql.createPool(
-    process.env.MYSQL_URL
+    // process.env.MYSQL_URL
 //      ||
 //      {
 //     host: process.env.MYSQLHOST,
@@ -17,16 +17,16 @@ const pool = mysql.createPool(
 //     queueLimit: 0
 // } 
 // ||
-//  {
-//     host: process.env.DB_HOST,
-//     user: process.env.DB_USER,
-//     password: process.env.DB_PASSWORD,
-//     database: process.env.DB_DATABASE,
-//     // port: process.env.MYSQLPORT,
-//     waitForConnections: true,
-//     connectionLimit: 10,
-//     queueLimit: 0
-// }
+ {
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+    // port: process.env.MYSQLPORT,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+}
 )
 
 
