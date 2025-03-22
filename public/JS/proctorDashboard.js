@@ -527,19 +527,33 @@ async function loadStudentWorkspace(studentId) {
             if (!response.ok) throw new Error("Failed to fetch achievements");
     
             const achievements = await response.json();
-            let achHtml = `<ul class="achievement-list">`;
+    
+            let achHtml = `<button id="upload-achievement-btn" class="upload-btn">Upload Achievement</button>`;
     
             if (achievements.length === 0) {
-                achHtml = "<p class='no-data'>No achievements uploaded yet.</p>";
+                achHtml += '<p class="no-data">No achievements uploaded yet.</p>';
             } else {
+                achHtml += `<div class="achievement-grid">`; // Grid container
+    
                 achievements.forEach(ach => {
+                    let embedLink = ach.previewLink.replace("/view", "/preview") + "&embedded=true";
+    
+    
                     achHtml += `
-                        <li>
-                            <span>${ach.title}</span>
-                            <a href="/downloadAchievement/${ach.id}" target="_blank" class="download-btn">Download</a>
-                        </li>`;
+                        <div class="achievement-card">
+                            <div class="pdf-thumbnail">
+                                <iframe src="${embedLink}" width="100%" height="150px"></iframe>
+                            </div>
+                            <p class="achievement-title">${ach.title}</p>
+                            <div class="achievement-actions">
+                                
+                                <a href="${ach.downloadLink}" target="_blank" class="download-btn">Download</a>
+                            </div>
+                        </div>
+                    `;
                 });
-                achHtml += `</ul>`;
+    
+                achHtml += `</div>`; // Close grid container
             }
     
             $('#tab-achievements').html(achHtml);
@@ -548,6 +562,7 @@ async function loadStudentWorkspace(studentId) {
             console.error('Error loading achievements:', error);
         }
     }
+    
     
     $(document).ready(function () {
         $(".tab-header").click(function () {

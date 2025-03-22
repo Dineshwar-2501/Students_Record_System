@@ -19,12 +19,13 @@
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "csv-parser": "^3.1.0",
-    "dotenv": "^16.4.5",
-    "express": "^4.21.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
     "express-fileupload": "^1.5.1",
     "express-rate-limit": "^7.4.1",
     "express-session": "^1.18.1",
     "google-auth-library": "^9.14.1",
+    "googleapis": "^148.0.0",
     "ioredis": "^5.6.0",
     "jsonwebtoken": "^9.0.2",
     "mime": "^4.0.6",
@@ -40,10 +41,10 @@
     "redis": "^4.7.0",
     "xlsx": "^0.18.5"
   },
-  "description": "",
   "devDependencies": {
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.0.12"
-  }
+  },
+  "description": ""
 }

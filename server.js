@@ -25,6 +25,7 @@ const studentRoutes = require("./routes/StudentRoutes");
 const rateLimiter = require('express-rate-limit'); 
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
+const { uploadToDrive } = require("./config/config");
 
 
 if (!fs.existsSync('uploads')) {
@@ -45,13 +46,14 @@ const storage = multer.diskStorage({
     }
 });
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'text/csv'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'text/csv', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
-        cb(new Error('Invalid file type. Only JPG, PNG, PDF, and CSV are allowed!'), false);
+        cb(new Error('Invalid file type. Only JPG, PNG, PDF, CSV, and DOCX are allowed!'), false);
     }
 };
+
 
 const forgotPasswordLimiter = rateLimiter({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -1426,13 +1428,22 @@ app.get('/getStudentAchievements/:studentId', async (req, res) => {
             [studentId]
         );
 
-        res.json(achievements);
+        // 🔹 Convert file IDs to Google Drive preview & download links
+        const achievementsWithLinks = achievements.map(ach => ({
+            id: ach.id,
+            title: ach.title,
+            previewLink: `https://drive.google.com/file/d/${ach.file_path}/view?usp=sharing`,
+            downloadLink: `https://drive.google.com/uc?export=download&id=${ach.file_path}`
+        }));
+
+        res.json(achievementsWithLinks);
 
     } catch (error) {
-        console.error("Error fetching achievements:", error);
+        console.error("❌ Error fetching achievements:", error);
         res.status(500).json({ message: "Error fetching achievements." });
     }
 });
+ 
 app.get('/downloadAchievement/:id', async (req, res) => {
     try {
         const achId = req.params.id;
@@ -1472,25 +1483,38 @@ app.get('/api/session', (req, res) => {
 
 //──────────────────────────────────Students───────────────────────────────────────────────────
 
+
+
 app.post('/uploadAchievement', upload.single('file'), async (req, res) => {
     try {
         const { student_id, title } = req.body;
         if (!title) return res.status(400).json({ success: false, message: "Title is required" });
 
-        const filePath = `uploads/${req.file.filename}`;
+        // 🔹 Upload file to Google Drive
+        const driveFile = await uploadToDrive(req.file, student_id, title);
+        if (!driveFile || !driveFile.id) {
+            return res.status(500).json({ success: false, message: "Drive upload failed" });
+        }
 
+        // 🔹 Store file ID in the database
         await db.execute(
             "INSERT INTO student_achievements (student_id, title, file_path) VALUES (?, ?, ?)",
-            [student_id, title, filePath]
+            [student_id, title, driveFile.id]
         );
 
-        res.json({ success: true, message: "Achievement uploaded successfully!" });
+        res.json({ 
+            success: true, 
+            message: "Achievement uploaded successfully!",
+            previewLink: driveFile.webViewLink,
+            downloadLink: driveFile.webContentLink
+        });
 
     } catch (error) {
         console.error("❌ Error uploading achievement:", error);
         res.status(500).json({ success: false, message: "Server error while uploading achievement" });
     }
 });
+
 
 
 

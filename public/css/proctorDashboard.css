@@ -366,3 +366,127 @@
 .save-marks-btn {
   align-self: flex-start;
 }
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 10px;
+}
+
+.achievement-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.pdf-thumbnail iframe {
+  border-radius: 5px;
+  border: none;
+  background: #f5f5f5;
+  display: inline;
+}
+
+.achievement-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+.achievement-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.download-btn, .achievement-actions button {
+  background: #007bff;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+
+.achievement-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+.achievement-card {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.pdf-thumbnail {
+  width: 100%;
+  max-width: 350px;
+  height: auto;
+}
+
+.pdf-frame {
+  width: 100%;
+  height: 150px;
+  border: none;
+}
+
+.achievement-title {
+  font-size: 16px;
+  margin: 10px 0;
+}
+.achievement-actions {
+  display: flex;
+  justify-content: flex-start; /* Aligns content to the left */
+  width: 100%;
+}
+
+.download-btn {
+  display: inline-block;
+  padding: 8px 12px;
+  background-color: #007bff;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: 0.3s ease;
+}
+
+.download-btn:hover {
+  background-color: #0056b3;
+}
+
+/* Responsive Styling */
+@media (max-width: 480px) {
+  .achievement-card {
+      max-width: 90%;
+      padding: 10px;
+  }
+  
+  .pdf-thumbnail {
+      max-width: 100%;
+  }
+
+  .pdf-frame {
+      height: 120px;
+  }
+
+  .achievement-title {
+      font-size: 14px;
+  }
+
+  .download-btn {
+      padding: 6px 10px;
+      font-size: 14px;
+  }
+}
