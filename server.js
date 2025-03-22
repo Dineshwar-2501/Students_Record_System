@@ -26,7 +26,11 @@ const rateLimiter = require('express-rate-limit');
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
 const { uploadToDrive } = require("./config/config");
+const serviceAccount = Buffer.from(process.env.GOOGLE_CREDENTIALS, "base64").toString("utf8");
 
+fs.writeFileSync("/tmp/service-account.json", serviceAccount);
+
+process.env.GOOGLE_APPLICATION_CREDENTIALS = "/tmp/service-account.json";
 
 if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
