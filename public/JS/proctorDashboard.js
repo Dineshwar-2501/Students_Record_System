@@ -1,3 +1,5 @@
+const updateGpaCgpa = require("./utils/updateGpaCgpa");
+
 function showLoader() {
     const loaderOverlay = document.getElementById('loader-overlay');
     loaderOverlay.style.display = 'flex';
