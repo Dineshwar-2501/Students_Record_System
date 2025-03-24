@@ -93,21 +93,29 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Internal server error' });
 });
 
-
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL, // Railway provides this
   });
   
+  // ✅ Unified session setup (PostgreSQL + previous session settings)
   app.use(
     session({
-      store: new PgSession({ pool }),
-      secret: process.env.SESSION_SECRET ,
-      resave: false,
-      saveUninitialized: false,
-      cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 },
+      store: new PgSession({
+        pool, // PostgreSQL session storage
+        tableName: "user_sessions", // Custom session table (default: 'session')
+      }),
+      secret: process.env.SESSION_SECRET || "supersecretkey",
+      resave: false, // Don't save session if unmodified
+      saveUninitialized: true, // Keep existing behavior
+      cookie: {
+        secure: process.env.NODE_ENV === "production", // Use HTTPS in production
+        httpOnly: true, // Protect against XSS attacks
+        maxAge: 24 * 60 * 60 * 1000, // 1 day (or 30 days if needed)
+      },
     })
   );
-// Session setup
+  
+// // Session setup
 
 // app.use(session({
 //     secret: process.env.SESSION_SECRET,
