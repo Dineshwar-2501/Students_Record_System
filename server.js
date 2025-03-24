@@ -18,7 +18,7 @@ const db = require('./config/database');
 const csv = require('csv-parser');
 const crypto = require("crypto");
 const router = express.Router();
-const PORT = process.env.PORT || 3000 ||5000;
+const PORT = process.env.PORT || 3000 ;
 const saltRounds = 10;
 const app = express();
 const studentRoutes = require("./routes/StudentRoutes");
@@ -26,14 +26,14 @@ const rateLimiter = require('express-rate-limit');
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
 const { uploadProfilePhotoToDrive, uploadAchievementToDrive,auth } = require("./config/config");
-const PgSession = require("connect-pg-simple")(session);
-const { Pool } = require("pg");
+// const PgSession = require("connect-pg-simple")(session);
+// const { Pool } = require("pg");
 
-// ✅ PostgreSQL Connection (Make sure Railway's DATABASE_URL is set correctly)
-const pgPool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false, // Enable SSL in production
-});
+// // ✅ PostgreSQL Connection (Make sure Railway's DATABASE_URL is set correctly)
+// const pgPool = new Pool({
+//     connectionString: process.env.DATABASE_URL,
+//     ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false, // Enable SSL in production
+// });
 
 
 
@@ -102,38 +102,38 @@ app.use((err, req, res, next) => {
 
 
   
-app.use(
-    session({
-        store: new PgSession({
-            pool: pgPool,
-            tableName: "user_sessions",
-            createTableIfMissing: true, // ✅ Auto-create the table (if using the latest version)
-        }),
+// app.use(
+//     session({
+//         store: new PgSession({
+//             pool: pgPool,
+//             tableName: "user_sessions",
+//             createTableIfMissing: true, // ✅ Auto-create the table (if using the latest version)
+//         }),
         
-        secret: process.env.SESSION_SECRET || "supersecretkey",
-        resave: false, // Don't save session if unmodified
-        saveUninitialized: false, // Only save sessions if needed (better for performance)
-        cookie: {
-            secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-            httpOnly: true, // Protect against XSS attacks
-            maxAge: 24 * 60 * 60 * 1000, // 1 day (adjust if needed)
-        },
-    })
-);
+//         secret: process.env.SESSION_SECRET ,
+//         resave: false, // Don't save session if unmodified
+//         saveUninitialized: false, // Only save sessions if needed (better for performance)
+//         cookie: {
+//             secure: process.env.NODE_ENV === "production", // Use HTTPS in production
+//             httpOnly: true, // Protect against XSS attacks
+//             maxAge: 24 * 60 * 60 * 1000, // 1 day (adjust if needed)
+//         },
+//     })
+// );
  
 
 // // Session setup
 
-// app.use(session({
-//     secret: process.env.SESSION_SECRET,
-//     resave: false,
-//     saveUninitialized: true,
-//     cookie: { 
-//         secure: false,  // Set to true if using HTTPS
-//         httpOnly: true, 
-//         maxAge: 24 * 60 * 60 * 1000 //1day
-//     }
-// }));
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: { 
+        secure: false,  // Set to true if using HTTPS
+        httpOnly: true, 
+        maxAge: 24 * 60 * 60 * 1000 //1day
+    }
+}));
 
 
 function checkAuth(req, res, next) {
