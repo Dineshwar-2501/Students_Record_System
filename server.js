@@ -114,7 +114,6 @@ const upload = multer({
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-// app.use(express.static("public")); // Serve the public folder
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -122,14 +121,29 @@ app.use("/", studentRoutes); // Use student routes
 app.use("/uploads", express.static(path.join(__dirname, 'uploads')));
 app.use(proctorRoutes);
 
-app.use(cors({
-    origin: "*",  // Allow all origins (for testing)
+
+
+const allowedOrigins = [
+  "http://localhost:3000",  // Local frontend
+  "http://localhost:5000",  // If you're testing from another local port
+  "https://studentsrecordsystem-production.up.railway.app", // Deployed frontend
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: "GET,POST,PUT,DELETE",
     allowedHeaders: "Content-Type,Authorization",
-    credentials: true, 
-    origin: "https://studentsrecordsystem-production.up.railway.app" 
-    // origin: "http://localhost:3000" 
-}));
+    credentials: true, // Important for cookies/sessions
+  })
+);
+
 
 app.use((err, req, res, next) => {
     console.error('Server error:', err);
@@ -1770,3 +1784,4 @@ module.exports = router;
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+app.set("trust proxy", 1); // Trust first proxy
