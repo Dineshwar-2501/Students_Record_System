@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const updateGpaCgpa = require("../util/updateGpaCgpa");
+const updateGpaCgpa = require("../utils/updateGpaCgpa");
 
 router.post("/update-gpa-cgpa", async (req, res) => {
     try {
