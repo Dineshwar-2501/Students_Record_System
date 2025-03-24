@@ -36,7 +36,6 @@ const pgPool = new Pool({
 });
 
 
-
   
 app.use(
     session({
@@ -159,6 +158,26 @@ function checkAuth(req, res, next) {
         return res.redirect('/login');
     }
     next();
+}
+
+
+async function updateStudentGpaCgpa(studentId) {
+    try {
+        const response = await fetch("/api/update-gpa-cgpa", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            console.log("✅ GPA & CGPA updated successfully!");
+        } else {
+            console.error("❌ Error updating GPA & CGPA:", data.message);
+        }
+    } catch (error) {
+        console.error("❌ Failed to update GPA & CGPA:", error);
+    }
 }
 app.get("/*.js", (req, res, next) => {
     res.type("application/javascript"); // ✅ Forces correct MIME type
@@ -1410,7 +1429,7 @@ app.post("/assignStudentMarks", async (req, res) => {
 
         // 🔥 Trigger GPA & CGPA update for each processed student
         for (const studentId of processedStudents) {
-            await updateGpaCgpa(studentId);
+            await updateStudentGpaCgpa(studentId);
         }
 
         res.json({ message: `Marks assigned! ${updates} updated, ${inserts} inserted.` });
