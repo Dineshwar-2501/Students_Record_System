@@ -120,6 +120,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/", studentRoutes); // Use student routes
 app.use("/uploads", express.static(path.join(__dirname, 'uploads')));
 app.use(proctorRoutes);
+app.use("/JS", express.static(path.join(__dirname, "public/JS")));
 
 
 
@@ -159,7 +160,10 @@ function checkAuth(req, res, next) {
     }
     next();
 }
-
+app.get("/*.js", (req, res, next) => {
+    res.type("application/javascript"); // ✅ Forces correct MIME type
+    next();
+});
 
 app.get('/studentDashboard', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'studentDashboard.html'));
