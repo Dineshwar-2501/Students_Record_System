@@ -26,14 +26,50 @@ const rateLimiter = require('express-rate-limit');
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
 const { uploadProfilePhotoToDrive, uploadAchievementToDrive,auth } = require("./config/config");
-// const PgSession = require("connect-pg-simple")(session);
-// const { Pool } = require("pg");
+const PgSession = require("connect-pg-simple")(session);
+const { Pool } = require("pg");
 
 // // ✅ PostgreSQL Connection (Make sure Railway's DATABASE_URL is set correctly)
-// const pgPool = new Pool({
-//     connectionString: process.env.DATABASE_URL,
-//     ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false, // Enable SSL in production
-// });
+const pgPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false, // Enable SSL in production
+});
+
+
+
+  
+app.use(
+    session({
+        store: new PgSession({
+            pool: pgPool,
+            tableName: "user_sessions",
+            createTableIfMissing: true, // ✅ Auto-create the table (if using the latest version)
+        }),
+        
+        secret: process.env.SESSION_SECRET ,
+        resave: false, // Don't save session if unmodified
+        saveUninitialized: false, // Only save sessions if needed (better for performance)
+        cookie: {
+            secure: process.env.NODE_ENV === "production", // Use HTTPS in production
+            httpOnly: true, // Protect against XSS attacks
+            maxAge: 24 * 60 * 60 * 1000, // 1 day (adjust if needed)
+        },
+    })
+);
+ 
+
+// Session setup
+
+// app.use(session({
+//     secret: process.env.SESSION_SECRET,
+//     resave: false,
+//     saveUninitialized: true,
+//     cookie: { 
+//         secure: false,  // Set to true if using HTTPS
+//         httpOnly: true, 
+//         maxAge: 24 * 60 * 60 * 1000 //1day
+//     }
+// }));
 
 
 
@@ -101,39 +137,6 @@ app.use((err, req, res, next) => {
 });
 
 
-  
-// app.use(
-//     session({
-//         store: new PgSession({
-//             pool: pgPool,
-//             tableName: "user_sessions",
-//             createTableIfMissing: true, // ✅ Auto-create the table (if using the latest version)
-//         }),
-        
-//         secret: process.env.SESSION_SECRET ,
-//         resave: false, // Don't save session if unmodified
-//         saveUninitialized: false, // Only save sessions if needed (better for performance)
-//         cookie: {
-//             secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-//             httpOnly: true, // Protect against XSS attacks
-//             maxAge: 24 * 60 * 60 * 1000, // 1 day (adjust if needed)
-//         },
-//     })
-// );
- 
-
-// // Session setup
-
-app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    cookie: { 
-        secure: false,  // Set to true if using HTTPS
-        httpOnly: true, 
-        maxAge: 24 * 60 * 60 * 1000 //1day
-    }
-}));
 
 
 function checkAuth(req, res, next) {
