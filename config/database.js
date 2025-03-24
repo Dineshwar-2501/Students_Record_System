@@ -7,7 +7,7 @@ const pool = mysql.createPool(
     connectionLimit: 10, // Adjust based on your needs
     queueLimit: 0
 }
-// ||
+//RAILWAY
 //  {
 //     host: process.env.DB_HOST,
 //     user: process.env.DB_USER,

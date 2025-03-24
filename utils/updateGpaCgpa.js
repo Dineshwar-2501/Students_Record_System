@@ -1,5 +1,4 @@
 const db = require("../config/database");
-
 async function updateGpaCgpa(studentId) {
     try {
         console.log(`🔄 Updating GPA & CGPA for Student ID: ${studentId}`);

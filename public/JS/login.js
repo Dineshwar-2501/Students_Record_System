@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        try {
+        try {//RAILWAY
             // const response = await fetch('/login', {
             const response = await fetch('https://studentsrecordsystem-production.up.railway.app/login', {
                 method: "POST",

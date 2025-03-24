@@ -1700,7 +1700,7 @@ app.get("/getUserProfile", async (req, res) => {
     }
 });
 
-app.get('/getStudentProfile', async (req, res) => {
+app.get('/api/getStudentProfile', async (req, res) => {
     try {
         const studentId = req.session.userId;
         if (!studentId) {
@@ -1718,52 +1718,63 @@ app.get('/getStudentProfile', async (req, res) => {
         res.status(500).json({ message: "Error fetching student." });
     }
 });
-app.post("/api/updateStudent", async (req, res) => {
+app.post('/updateStudentProfile', async (req, res) => {
     try {
-        if (!req.session || !req.session.userId || req.session.role !== "student") {
-            return res.status(401).json({ error: "Unauthorized. Only students can update profiles." });
+        const studentId = req.session.userId;
+        if (!studentId) {
+            return res.status(401).json({ message: "Unauthorized. Please log in again." });
         }
 
-        const userId = req.session.userId;
-        const updateFields = [];
+        const { name, email, department, batch, regid, phone_number, status } = req.body;
+        const updates = [];
         const values = [];
 
-        // Allowed fields to update
-        const allowedFields = ["name", "email", "department", "batch", "regid", "phone_number", "status"];
-        
-        allowedFields.forEach(field => {
-            if (req.body[field]) {
-                updateFields.push(`${field} = ?`);
-                values.push(req.body[field]);
-            }
-        });
-
-        if (updateFields.length === 0) {
-            return res.status(400).json({ error: "No fields provided for update." });
+        if (name !== undefined) {
+            updates.push("name = ?");
+            values.push(name);
+        }
+        if (email !== undefined) {
+            updates.push("email = ?");
+            values.push(email);
+        }
+        if (department !== undefined) {
+            updates.push("department = ?");
+            values.push(department);
+        }
+        if (batch !== undefined) {
+            updates.push("batch = ?");
+            values.push(batch);
+        }
+        if (regid !== undefined) {
+            updates.push("regid = ?");
+            values.push(regid);
+        }
+        if (phone_number !== undefined) {
+            updates.push("phone_number = ?");
+            values.push(phone_number);
+        }
+        if (status !== undefined) {
+            updates.push("status = ?");
+            values.push(status);
         }
 
-        values.push(userId); // Add student ID to the end
+        if (updates.length === 0) {
+            return res.status(400).json({ message: "No changes provided." });
+        }
 
-        const sql = `UPDATE students SET ${updateFields.join(", ")} WHERE student_id = ?`;
+        values.push(studentId);
+        const query = `UPDATE students SET ${updates.join(", ")} WHERE student_id = ?`;
 
-        db.query(sql, values, (err, result) => {
-            if (err) {
-                console.error("❌ Database error:", err);
-                return res.status(500).json({ error: "Database error" });
-            }
-
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ error: "Student not found or no changes made." });
-            }
-
-            res.json({ message: "✅ Student profile updated successfully!" });
-        });
+        await db.execute(query, values);
+        res.json({ success: true, message: "Profile updated successfully!" });
 
     } catch (error) {
-        console.error("❌ Server error:", error);
-        res.status(500).json({ error: "Internal server error" });
+        console.error("Error updating profile:", error);
+        res.status(500).json({ message: "Error updating profile." });
     }
 });
+
+
 
 
 
@@ -1772,7 +1783,7 @@ router.use((req, res) => {
     res.status(404).json({ success: false, message: "API not found" });
 });
 
-// Start the server
+// Start the server//RAILWAY
 app.listen(PORT, () => {
     // console.log(`Server is running on http://localhost:${PORT}`);
     console.log(`Server is running on Railway : ${PORT}`);
