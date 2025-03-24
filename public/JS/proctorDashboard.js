@@ -1,6 +1,6 @@
-const db = require("../config/database");
+// const db = require("../config/database");
 
-import { updateGpaCgpa } from "./Utils/updateGpaCgpa.js"; 
+import { updateGpaCgpa } from "./utils/updateGpaCgpa.js"; 
 // async function updateGpaCgpa(studentId) {
 //     try {
 //         console.log(`🔄 Updating GPA & CGPA for Student ID: ${studentId}`);
