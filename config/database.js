@@ -2,8 +2,24 @@ const mysql = require('mysql2/promise');
 require('dotenv').config(); // Load environment variables
 
 // Ensure DATABASE_URL is correctly set in Railway
-const pool = mysql.createPool(
-    process.env.MYSQL_URL
+const { Pool } = require("pg");
+const mysql = require("mysql2");
+
+// ✅ PostgreSQL Connection
+const pgPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+});
+
+// ✅ MySQL Connection
+const mysqlPool = mysql.createPool({
+    uri: process.env.MYSQL_URL,
+    connectionLimit: 10
+}).promise();
+
+// Export both connections
+module.exports = { pgPool, mysqlPool };
+
 //      ||
 //      {
 //     host: process.env.MYSQLHOST,
@@ -27,7 +43,6 @@ const pool = mysql.createPool(
 //     connectionLimit: 10,
 //     queueLimit: 0
 // }
-)
 
 
 // Test connection
@@ -41,4 +56,3 @@ async () => {
     }
 };
 
-module.exports = pool;

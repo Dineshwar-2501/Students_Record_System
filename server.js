@@ -26,8 +26,16 @@ const rateLimiter = require('express-rate-limit');
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
 const { uploadProfilePhotoToDrive, uploadAchievementToDrive,auth } = require("./config/config");
+const session = require("express-session");
 const PgSession = require("connect-pg-simple")(session);
 const { Pool } = require("pg");
+
+// ✅ PostgreSQL Connection (Make sure Railway's DATABASE_URL is set correctly)
+const pgPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false, // Enable SSL in production
+});
+
 
 
 if (!fs.existsSync('uploads')) {
@@ -93,28 +101,28 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Internal server error' });
 });
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL, // Railway provides this
-  });
+
   
-  // ✅ Unified session setup (PostgreSQL + previous session settings)
-  app.use(
+app.use(
     session({
-      store: new PgSession({
-        pool, // PostgreSQL session storage
-        tableName: "user_sessions", // Custom session table (default: 'session')
-      }),
-      secret: process.env.SESSION_SECRET || "supersecretkey",
-      resave: false, // Don't save session if unmodified
-      saveUninitialized: true, // Keep existing behavior
-      cookie: {
-        secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-        httpOnly: true, // Protect against XSS attacks
-        maxAge: 24 * 60 * 60 * 1000, // 1 day (or 30 days if needed)
-      },
+        store: new PgSession({
+            pool: pgPool,
+            tableName: "user_sessions",
+            createTableIfMissing: true, // ✅ Auto-create the table (if using the latest version)
+        }),
+        
+        secret: process.env.SESSION_SECRET || "supersecretkey",
+        resave: false, // Don't save session if unmodified
+        saveUninitialized: false, // Only save sessions if needed (better for performance)
+        cookie: {
+            secure: process.env.NODE_ENV === "production", // Use HTTPS in production
+            httpOnly: true, // Protect against XSS attacks
+            maxAge: 24 * 60 * 60 * 1000, // 1 day (adjust if needed)
+        },
     })
-  );
-  
+);
+ 
+
 // // Session setup
 
 // app.use(session({
