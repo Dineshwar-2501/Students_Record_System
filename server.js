@@ -28,6 +28,8 @@ const { uploadProfilePhotoToDrive, uploadAchievementToDrive,auth } = require("./
 const PgSession = require("connect-pg-simple")(session);
 const { Pool } = require("pg");
 const proctorRoute = require("./routes/proctor");
+const updateStudentGpaCgpa = require("./utils/updateGpaCgpa"); 
+
 
 // // ✅ PostgreSQL Connection (Make sure Railway's DATABASE_URL is set correctly)
 const pgPool = new Pool({
@@ -161,27 +163,27 @@ function checkAuth(req, res, next) {
 }
 
 
-async function updateStudentGpaCgpa(studentId) {
-    try {
-        const response = await fetch(`${window.location.origin}/api/update-gpa-cgpa`, { // ✅ Fix API URL
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ studentId }),
-        });
+// async function updateStudentGpaCgpa(studentId) {
+//     try {
+//         const response = await fetch(`${window.location.origin}/api/update-gpa-cgpa`, { // ✅ Fix API URL
+//             method: "POST",
+//             headers: { "Content-Type": "application/json" },
+//             body: JSON.stringify({ studentId }),
+//         });
 
-        const data = await response.json();
-        if (data.success) {
-            console.log("✅ GPA & CGPA updated successfully!");
-            alert("GPA & CGPA updated successfully!");
-        } else {
-            console.error("❌ Error updating GPA & CGPA:", data.message);
-            alert("Failed to update GPA & CGPA.");
-        }
-    } catch (error) {
-        console.error("❌ Failed to update GPA & CGPA:", error);
-        alert("Server error occurred.");
-    }
-}
+//         const data = await response.json();
+//         if (data.success) {
+//             console.log("✅ GPA & CGPA updated successfully!");
+//             alert("GPA & CGPA updated successfully!");
+//         } else {
+//             console.error("❌ Error updating GPA & CGPA:", data.message);
+//             alert("Failed to update GPA & CGPA.");
+//         }
+//     } catch (error) {
+//         console.error("❌ Failed to update GPA & CGPA:", error);
+//         alert("Server error occurred.");
+//     }
+// }
 
 
 
