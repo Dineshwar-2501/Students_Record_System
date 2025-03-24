@@ -79,4 +79,4 @@ async function updateGpaCgpa(studentId) {
     }
 }
 
-module.exports = {updateGpaCgpa};
+module.exports = updateGpaCgpa;

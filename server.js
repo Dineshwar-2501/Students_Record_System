@@ -28,7 +28,7 @@ const { uploadProfilePhotoToDrive, uploadAchievementToDrive,auth } = require("./
 const PgSession = require("connect-pg-simple")(session);
 const { Pool } = require("pg");
 const proctorRoute = require("./routes/proctor");
-const updateStudentGpaCgpa = require("./utils/updateGpaCgpa"); 
+const updateGpaCgpa = require("./utils/updateGpaCgpa"); 
 
 
 // // ✅ PostgreSQL Connection (Make sure Railway's DATABASE_URL is set correctly)
@@ -1437,7 +1437,7 @@ app.post("/assignStudentMarks", async (req, res) => {
 
         // 🔥 Trigger GPA & CGPA update for each processed student
         for (const studentId of processedStudents) {
-            await updateStudentGpaCgpa(studentId);
+            await updateGpaCgpa(studentId);
         }
 
         res.json({ message: `Marks assigned! ${updates} updated, ${inserts} inserted.` });
