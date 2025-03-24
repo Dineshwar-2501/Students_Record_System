@@ -641,4 +641,38 @@ async function loadStudentWorkspace(studentId) {
                 });
         }
     });
+    function convertGoogleDriveLink(url) {
+        const match = url.match(/(?:\/d\/|id=)([^\/?]+)/);
+        return match ? `https://drive.google.com/thumbnail?id=${match[1]}` : url;
+    }
+    
+    function getGoogleDriveImageUrl(fileId) {
+        return `https://drive.google.com/thumbnail?id=${fileId}`;
+    }
+    
+    
+    
+    document.addEventListener("DOMContentLoaded", async function () {
+        try {
+            const response = await fetch("/getUserProfile");
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    
+            const data = await response.json();
+            const profileImg = document.getElementById("profilePhoto");
+    
+            if (data.profilePhoto && data.profilePhoto.trim() !== "") {
+                profileImg.src = convertGoogleDriveLink(data.profilePhoto);
+            } else {
+                profileImg.src = "/images/default-image.jpeg";
+            }
+    
+            profileImg.onerror = function () {
+                profileImg.src = "/images/default-image.jpeg"; // Fallback if image fails to load
+            };
+    
+        } catch (error) {
+            console.error("❌ Error loading profile data:", error);
+            document.getElementById("profilePhoto").src = "/images/default-image.jpeg";
+        }
+    });
     

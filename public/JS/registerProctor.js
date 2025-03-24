@@ -1,5 +1,21 @@
-function validateProctorForm(event) {
-    event.preventDefault(); // Prevent form submission temporarily
+
+function previewPhoto(event) {
+    const file = event.target.files[0];
+    if (file) {
+        if (file.size > 2 * 1024 * 1024) { // 🔹 2MB file size limit
+            alert("File size must be less than 2MB!");
+            event.target.value = "";
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            document.getElementById("photoPreview").src = e.target.result;
+            document.getElementById("photoPreview").style.display = "block";
+        };
+        reader.readAsDataURL(file);
+    }
+}function validateProctorForm(event) {
+    event.preventDefault();
 
     // Get form values
     const name = document.getElementById("proctorName")?.value.trim();
@@ -9,8 +25,7 @@ function validateProctorForm(event) {
     const password = document.getElementById("proctorPassword")?.value.trim();
     const confirmPassword = document.getElementById("proctorConfirmPassword")?.value.trim();
     const department = document.getElementById("proctorDepartment")?.value.trim();
-
- 
+    const profilePhoto = document.getElementById("proctorPhoto").files[0]; // ✅ Get file
 
     // ✅ Name Validation (Only Letters & Spaces)
     const nameRegex = /^[A-Za-z ]+$/;
@@ -19,7 +34,7 @@ function validateProctorForm(event) {
         return false;
     }
 
-    // ✅ Email Validation (Basic Format)
+    // ✅ Email Validation
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email)) {
         alert("Please enter a valid email address!");
@@ -33,34 +48,38 @@ function validateProctorForm(event) {
         return false;
     }
 
-    // ✅ Password Strength Validation (At least 6 chars)
+    // ✅ Password Validation
     if (password.length < 6) {
         alert("Password must be at least 6 characters long!");
         return false;
     }
 
-    // ✅ Password Match Validation
     if (password !== confirmPassword) {
         alert("Passwords do not match!");
         return false;
     }
 
-    // ✅ If all validations pass, submit the form via Fetch API
-    const formData = {
-        name: name,
-        email: email,
-        designation: designation,
-        department: department,
-        phone_number: phoneNumber,
-        password: password
-    };
+    // ✅ Use FormData to send both text and file data
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("email", email);
+    formData.append("designation", designation);
+    formData.append("department", department);
+    formData.append("phone_number", phoneNumber);
+    formData.append("password", password);
+    
+    if (profilePhoto && profilePhoto.size > 0) {
+        formData.append("profilePhoto", profilePhoto);
+    }
 
-    console.log("🔥 Sending Proctor Registration Data:", formData); // Debugging log
+    console.log("🔥 Sending Proctor Registration Data:");
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ": ", pair[1]);
+    }
 
     fetch('/registerProctor', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: formData // ✅ Auto-sets Content-Type
     })
     .then(response => response.json())
     .then(data => {
@@ -68,7 +87,7 @@ function validateProctorForm(event) {
             alert(data.message);
             if (data.message.includes("success")) {
                 document.getElementById("proctorRegistrationForm").reset();
-                window.location.href = "/login"; // Redirect to login after success
+                window.location.href = "/login";
             }
         }
     })

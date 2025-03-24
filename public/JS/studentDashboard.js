@@ -1,4 +1,3 @@
-
 document.addEventListener("DOMContentLoaded", async function () {
     try {
         const response = await fetch('/api/session'); // Fetch session details
@@ -9,6 +8,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         } else {
             console.error("User ID not found in session.");
         }
+       
     } catch (error) {
         console.error("Error loading session data:", error);
     }
@@ -286,7 +286,7 @@ async function loadAchievements(studentId) {
 
 
 
-$('#submit-achievement').off('click').click(async function (event) {
+$(document).off("click", "#submit-achievement").on("click", "#submit-achievement", async function (event) {
     event.preventDefault();  // Prevent auto submission
     const fileInput = document.getElementById('achievement-file');
     const titleInput = document.getElementById('achievement-title');
@@ -340,6 +340,253 @@ $('#submit-achievement').off('click').click(async function (event) {
     $('#submit-achievement').prop('disabled', false); // Re-enable button
 });
 
+function convertGoogleDriveLink(url) {
+    const match = url.match(/(?:\/d\/|id=)([^\/?]+)/);
+    return match ? `https://drive.google.com/thumbnail?id=${match[1]}` : url;
+}
+
+function getGoogleDriveImageUrl(fileId) {
+    return `https://drive.google.com/thumbnail?id=${fileId}`;
+}
 
 
+document.addEventListener("DOMContentLoaded", async function () {
+    try {
+        const response = await fetch("/getUserProfile");
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+        const data = await response.json();
+        const profileImg = document.getElementById("profilePhoto");
+
+        if (data.profilePhoto && data.profilePhoto.trim() !== "") {
+            profileImg.src = convertGoogleDriveLink(data.profilePhoto);
+        } else {
+            profileImg.src = "/images/default-image.jpeg";
+        }
+
+        profileImg.onerror = function () {
+            profileImg.src = "/images/default-image.jpeg"; // Fallback if image fails to load
+        };
+
+    } catch (error) {
+        console.error("❌ Error loading profile data:", error);
+        document.getElementById("profilePhoto").src = "/images/default-image.jpeg";
+    }
+});
+
+// function convertGoogleDriveLink(url) {
+//     const match = url.match(/(?:\/d\/|id=)([^\/?]+)/);
+//     return match ? `https://drive.google.com/thumbnail?id=${match[1]}` : url; 
+// }
+
+// async function loadProfileImage(url, retries = 4) {
+//     const profileImg = document.getElementById("profilePhoto");
+
+//     for (let attempt = 1; attempt <= retries; attempt++) {
+//         console.log(`🔄 Attempt ${attempt}: Loading profile image...`);
+//         profileImg.src = convertGoogleDriveLink(url);
+
+//         await new Promise(resolve => setTimeout(resolve, attempt * (2000 * attempt))); // Wait 2s, 4s, 8s, 16s
+
+//         if (profileImg.complete && profileImg.naturalHeight !== 0) {
+//             console.log("✅ Profile image loaded successfully!");
+//             return;
+//         }
+//     }
+
+//     console.log("❌ All retries failed. Using default image.");
+//     profileImg.src = "/images/default-image.jpeg"; // Fallback
+// }
+
+
+// document.addEventListener("DOMContentLoaded", async function () {
+//     try {
+//         const response = await fetch("/getUserProfile");
+
+//         if (!response.ok) {
+//             throw new Error(`HTTP error! Status: ${response.status}`);
+//         }
+
+//         const text = await response.text(); // Read as text first
+//         try {
+//             var data = JSON.parse(text); // Try to parse JSON
+//         } catch (err) {
+//             throw new Error("❌ Invalid JSON response received!");
+//         }
+
+//         if (data.profilePhoto && data.profilePhoto.trim() !== "") {
+//             await loadProfileImage(data.profilePhoto);
+//         } else {
+//             document.getElementById("profilePhoto").src = "/images/default-image.jpeg";
+//         }
+//     } catch (error) {
+//         console.error("❌ Error loading profile data:", error);
+//         document.getElementById("profilePhoto").src = "/images/default-image.jpeg";
+//     }
+// });
+
+
+// // Sidebar Image Sync
+// document.getElementById("profilePhoto").addEventListener("click", async function () {
+//     document.getElementById("sidebar").classList.add("open");
+
+//     await fetchStudentData(); // Ensure student data is loaded
+
+//     const sidebarProfilePhoto = document.getElementById("sidebarProfilePhoto");
+//     if (sidebarProfilePhoto) {
+//         sidebarProfilePhoto.src = document.getElementById("profilePhoto").src;
+//     }
+// });
+
+
+// // Close Sidebar
+// function closeSidebar() {
+//     document.getElementById("sidebar").classList.remove("open");
+// }
+
+// // Fetch Student Data & Populate Sidebar
+// async function fetchStudentData() {
+//     try {
+//         const response = await fetch("/api/GetStudentProfile", { credentials: "include" });
+//         const data = await response.json();
+
+//         if (!data) return console.warn("No student data found.");
+
+//         document.querySelectorAll(".studentEmail").forEach(el => el.textContent = data.email || "N/A");
+//         document.querySelectorAll(".studentDept").forEach(el => el.textContent = data.department || "N/A");
+//         document.querySelectorAll(".studentBatch").forEach(el => el.textContent = data.batch || "N/A");
+//         document.querySelectorAll(".studentRegID").forEach(el => el.textContent = data.regid || "N/A");
+//         document.querySelectorAll(".studentPhone").forEach(el => el.textContent = data.phone_number || "N/A");
+//         document.querySelectorAll(".studentStatus").forEach(el => el.textContent = data.status || "Unknown");
+
+//         const studentNameEl = document.getElementById("studentName");
+//         if (studentNameEl) studentNameEl.textContent = data.name || "Unknown";
+
+//     } catch (error) {
+//         console.error("❌ Error fetching student data:", error);
+//     }
+// }
+
+// $(document).ready(() => {
+//     let requestTimeout;
+
+//     // Open Edit Profile Modal & Prefill Input Fields
+//     $('#editProfile').click(() => {
+//         $('#editName').val($('#studentName').text());
+//         $('#editEmail').val($('.studentEmail').text());
+//         $('#editDept').val($('.studentDept').text());
+//         $('#editBatch').val($('.studentBatch').text());
+//         $('#editRegID').val($('.studentRegID').text());
+//         $('#editPhone').val($('.studentPhone').text());
+//         $('#editStatus').val($('.studentStatus').text());
+
+//         $('#editProfileModal').css('display', 'flex'); // Show modal
+//     });
+
+//     // Close Edit Profile Modal
+//     $('#closeEditModal').click(() => {
+//         $('#editProfileModal').css('display', 'none'); // Hide modal
+//     });
+
+//     // Handle Student Profile Update (Partial Updates Allowed)
+//     $('#editProfileForm').submit(async function (e) {
+//         e.preventDefault();
+    
+//         let updatedData = {};
+//         const fields = ["name", "email", "department", "batch", "regid", "phone_number", "status"];
+        
+//         fields.forEach(field => {
+//             let inputElement = $(`#edit${field.charAt(0).toUpperCase() + field.slice(1)}`);
+//             if (inputElement.length > 0) { // ✅ Ensure element exists
+//                 let inputVal = inputElement.val()?.trim() || ""; // ✅ Prevent undefined error
+//                 let currentText = $(`.student${field.charAt(0).toUpperCase() + field.slice(1)}`).text()?.trim() || "";
+    
+//                 if (inputVal !== currentText) {
+//                     updatedData[field] = inputVal;
+//                 }
+//             }
+//         });
+    
+//         if (Object.keys(updatedData).length === 0) {
+//             alert("⚠️ No changes detected.");
+//             return;
+//         }
+    
+//         try {
+//             const response = await fetch('/api/updateStudent', { 
+//                 method: 'POST',
+//                 headers: { 'Content-Type': 'application/json' },
+//                 body: JSON.stringify(updatedData),
+//                 credentials: 'include'
+//             });
+    
+//             if (!response.ok) {
+//                 let errorMsg = await response.text();
+//                 throw new Error(errorMsg || "Update failed");
+//             }
+    
+//             const result = await response.json();
+    
+//             // Update Sidebar Profile Only for Changed Fields
+//             Object.keys(updatedData).forEach(field => {
+//                 $(`.student${field.charAt(0).toUpperCase() + field.slice(1)}`).text(updatedData[field]);
+//             });
+    
+//             $('#editProfileModal').css('display', 'none'); // Close modal
+//             alert('✅ Profile updated successfully!');
+            
+//             // Refresh profile photo if changed
+//             debounceLoadProfile();
+    
+//         } catch (error) {
+//             console.error('❌ Error updating profile:', error);
+//             alert(`⚠️ Failed to update profile: ${error.message}`);
+//         }
+//     });
+    
+
+//     // Function to Fetch Student Data (Debounced)
+//     function debounceLoadProfile() {
+//         clearTimeout(requestTimeout);
+//         requestTimeout = setTimeout(loadStudentProfile, 1000);
+//     }
+
+//     // Load Student Profile
+//     async function loadStudentProfile() {
+//         try {
+//             const response = await fetch('/getStudentProfile', { credentials: 'include' });
+
+//             // Check if response is valid JSON (to prevent HTML errors)
+//             const contentType = response.headers.get("content-type");
+//             if (!response.ok || !contentType || !contentType.includes("application/json")) {
+//                 let errorText = await response.text();
+//                 throw new Error(`Invalid response: ${errorText}`);
+//             }
+
+//             const data = await response.json();
+
+//             $('#studentName').text(data.name || "Unknown");
+//             $('.studentEmail').text(data.email || "N/A");
+//             $('.studentDept').text(data.department || "N/A");
+//             $('.studentBatch').text(data.batch || "N/A");
+//             $('.studentRegID').text(data.regid || "N/A");
+//             $('.studentPhone').text(data.phone_number || "N/A");
+//             $('.studentStatus').text(data.status || "Unknown");
+
+//             // Update profile photo safely
+//             if (data.profilePhoto) {
+//                 $("#profilePhoto").attr("src", convertGoogleDriveLink(data.profilePhoto)).on("error", function () {
+//                     $(this).attr("src", "/images/default-image.jpeg"); // Fallback
+//                 });
+//             }
+
+//         } catch (error) {
+//             console.error('❌ Error loading student profile:', error);
+//             alert(`⚠️ Failed to load profile: ${error.message}`);
+//         }
+//     }
+
+//     // Initial load with debounce
+//     debounceLoadProfile();
+// });
 

@@ -25,12 +25,9 @@ const studentRoutes = require("./routes/StudentRoutes");
 const rateLimiter = require('express-rate-limit'); 
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
-const { uploadToDrive } = require("./config/config");
-const serviceAccount = Buffer.from(process.env.GOOGLE_CREDENTIALS, "base64").toString("utf8");
+const { uploadProfilePhotoToDrive, uploadAchievementToDrive,auth } = require("./config/config");
 
-fs.writeFileSync("/tmp/service-account.json", serviceAccount);
 
-process.env.GOOGLE_APPLICATION_CREDENTIALS = "/tmp/service-account.json";
 
 if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
@@ -190,14 +187,13 @@ app.post("/logout", (req, res) => {
         res.status(200).json({ message: "Logged out successfully" });
     });
 });
-app.post('/registerStudent', async (req, res) => {
+app.post("/registerStudent", upload.single("profilePhoto"), async (req, res) => {
     try {
-        console.log("🔥 Received Student Registration Data:", req.body); // Debugging log
+        console.log("🔥 Received Student Registration Data:", req.body);
 
         const { name, email, department, batch, year_of_study, regid, password, phone_number, parent_phone_number } = req.body;
 
         if (!name || !email || !department || !batch || !year_of_study || !regid || !password || !phone_number || !parent_phone_number) {
-            console.error("❌ Error: Missing required fields!");
             return res.status(400).json({ message: "All fields are required!" });
         }
 
@@ -207,91 +203,140 @@ app.post('/registerStudent', async (req, res) => {
             return res.status(400).json({ message: "Student already registered!" });
         }
 
+        // ✅ Default profile photo
+        let profilePhoto = "https://drive.google.com/uc?id=10TyTgxEnZX0eRcbCiVmpL2Tqyo6zwyCx";
+
+        // ✅ Upload Profile Photo if provided
+        if (req.file) {
+            const driveResponse = await uploadProfilePhotoToDrive(req.file, regid);
+            console.log("📸 Drive Response:", driveResponse);
+
+            if (driveResponse && driveResponse.webContentLink) {
+                profilePhoto = driveResponse.webContentLink;
+            } else if (driveResponse && driveResponse.id) {
+                profilePhoto = `https://drive.google.com/uc?id=${driveResponse.id}`;
+            }
+        }
+
         // ✅ Hash password before storing
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // ✅ Insert new student
+        // ✅ Insert new student with profile photo
         await db.execute(
-            "INSERT INTO students (name, email, department, batch, year_of_study, regid, password, phone_number, parent_phone_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [name, email, department, batch, year_of_study, regid, hashedPassword, phone_number, parent_phone_number]
+            "INSERT INTO students (name, email, department, batch, year_of_study, regid, password, phone_number, parent_phone_number, profilePhoto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [name, email, department, batch, year_of_study, regid, hashedPassword, phone_number, parent_phone_number, profilePhoto]
         );
 
-        res.status(201).json({ message: "Student registered successfully!" });
+        console.log("✅ Student Registered:", { name, email, regid, profilePhoto });
+
+        res.status(201).json({ message: "Student registered successfully!", fileUrl: profilePhoto });
 
     } catch (error) {
         console.error("❌ Error registering student:", error);
         res.status(500).json({ message: "Error registering student." });
     }
 });
-app.post('/registerProctor', async (req, res) => {
+
+
+app.post("/registerProctor", upload.single("profilePhoto"), async (req, res) => {
     try {
-        console.log("🔥 Received Proctor Registration Data:", req.body); // Debugging log
+        console.log("🔥 Received Proctor Registration Data:", req.body);
 
-        const { name, email, designation,  password, phone_number,department } = req.body;
+        const { name, email, designation, password, phone_number, department } = req.body;
 
-        if (!name || !email || !designation  || !password || !phone_number||!department) {
-            console.error("❌ Error: Missing required fields!");
+        if (!name || !email || !designation || !password || !phone_number || !department) {
             return res.status(400).json({ message: "All fields are required!" });
         }
 
         // ✅ Check if the proctor already exists
-        const [existingProctor] = await db.execute("SELECT * FROM proctors WHERE email = ? ", [email]);
+        const [existingProctor] = await db.execute("SELECT * FROM proctors WHERE email = ?", [email]);
         if (existingProctor.length > 0) {
             return res.status(400).json({ message: "Proctor already registered!" });
+        }
+
+        let profilePhoto = "https://drive.google.com/uc?id=10TyTgxEnZX0eRcbCiVmpL2Tqyo6zwyCx";
+
+        // ✅ Upload Profile Photo if provided
+        if (req.file) {
+            const driveResponse = await uploadProfilePhotoToDrive(req.file, email);
+            console.log("📸 Drive Response:", driveResponse);
+
+            if (driveResponse && driveResponse.webContentLink) {
+                profilePhoto = driveResponse.webContentLink;
+            } else if (driveResponse && driveResponse.id) {
+                profilePhoto = `https://drive.google.com/uc?id=${driveResponse.id}`;
+            }
         }
 
         // ✅ Hash password before storing
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // ✅ Insert new proctor
+        // ✅ Insert new proctor with profile photo
         await db.execute(
-            "INSERT INTO proctors (name, email, designation,  password, phone_number,department) VALUES (?, ?, ?, ?, ?, ?)",
-            [name, email, designation, hashedPassword, phone_number,department]
+            "INSERT INTO proctors (name, email, designation, password, phone_number, department, profilePhoto) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [name, email, designation, hashedPassword, phone_number, department, profilePhoto]
         );
 
-        res.status(201).json({ message: "Proctor registered successfully!" });
+        res.status(201).json({ message: "Proctor registered successfully!", fileUrl: profilePhoto });
 
     } catch (error) {
         console.error("❌ Error registering proctor:", error);
         res.status(500).json({ message: "Error registering proctor." });
     }
 });
-app.post('/registerAdmin', async (req, res) => {
+
+
+app.post("/registerAdmin", upload.single("profilePhoto"), async (req, res) => {
     try {
-        console.log("🔥 Received admin Registration Data:", req.body); // Debugging log
+        console.log("🔥 Received admin Registration Data:", req.body);
 
-        const { username, email, password ,department } = req.body;
-
-        if (!username || !email  || !password || !department) {
+        const { username, email, password, department } = req.body;
+        if (!username || !email || !password || !department) {
             console.error("❌ Error: Missing required fields!");
             return res.status(400).json({ message: "All fields are required!" });
         }
 
         // ✅ Check if the admin already exists
-        const [existingAdmin] = await db.execute("SELECT * FROM admins WHERE email = ? ", [email]);
+        const [existingAdmin] = await db.execute("SELECT * FROM admins WHERE email = ?", [email]);
         if (existingAdmin.length > 0) {
             return res.status(400).json({ message: "Admin already registered!" });
         }
 
+        let profilePhoto = "https://drive.google.com/uc?id=10TyTgxEnZX0eRcbCiVmpL2Tqyo6zwyCx";
+
+        // ✅ Upload Profile Photo if provided
+        if (req.file) {
+            const driveResponse = await uploadProfilePhotoToDrive(req.file, username);
+            console.log("📸 Drive Response:", driveResponse);
+
+            if (driveResponse && driveResponse.webContentLink) {
+                profilePhoto = driveResponse.webContentLink;
+            } else if (driveResponse && driveResponse.id) {
+                profilePhoto = `https://drive.google.com/uc?id=${driveResponse.id}`;
+            }
+        }
+
+
         // ✅ Hash password before storing
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // ✅ Insert new admin
+        // ✅ Insert new admin with profile photo
         await db.execute(
-            "INSERT INTO admins(username, email,  password,department) VALUES (?, ?, ?, ?)",
-            [username, email, hashedPassword,department]
+            "INSERT INTO admins(username, email, password, department, profilePhoto) VALUES (?, ?, ?, ?, ?)",
+            [username, email, hashedPassword, department, profilePhoto]
         );
 
         res.status(201).json({ message: "Admin registered successfully!" });
 
     } catch (error) {
-        console.error("❌ Error registering ADmin:", error);
-        res.status(500).json({ message: "Error registering ADmin." });
+        console.error("❌ Error registering Admin:", error);
+        res.status(500).json({ message: "Error registering Admin." });
     }
 });
+;
 app.post('/login', async (req, res) => {
-    const { email, username, password, role, rememberMe } = req.body;
-    console.log('Login attempt:', { identifier: role === 'admin' ? username : email, role });
+    const { email, password, role, rememberMe } = req.body;
+    console.log('Login attempt:', { identifier: email, role });
 
     try {
         let query, identifier;
@@ -352,6 +397,7 @@ app.post('/login', async (req, res) => {
         }
 
         req.session.role = role;
+        console.log('Session after login:', req.session);  // Log the session object
 
         // Set session expiration
         req.session.cookie.maxAge = rememberMe 
@@ -1082,7 +1128,7 @@ app.get('/getProctorProfile', async (req, res) => {
             return res.status(401).json({ message: "Unauthorized. Please log in again." });
         }
 
-        const [proctor] = await db.execute("SELECT name, email, designation, phone_number FROM proctors WHERE proctor_id = ?", [proctorId]);
+        const [proctor] = await db.execute("SELECT *FROM proctors WHERE proctor_id = ?", [proctorId]);
         if (proctor.length === 0) {
             return res.status(404).json({ message: "Proctor not found." });
         }
@@ -1485,17 +1531,51 @@ app.get('/api/session', (req, res) => {
 });
 
 
-//──────────────────────────────────Students───────────────────────────────────────────────────
+// ✅ Upload Profile Photo API
+app.post('/upload-profile', upload.single('profilePhoto'), async (req, res) => {
+    try {
+        const { userId, userType } = req.body; // 🔹 Get user type
+        if (!userId || !userType) 
+            return res.status(400).json({ success: false, message: "User ID and type are required" });
+
+        // 🔹 Upload to Google Drive
+        const driveFile = await uploadProfilePhotoToDrive(req.file, userId);
+        if (!driveFile || !driveFile.profilePhoto) {
+            return res.status(500).json({ success: false, message: "Drive upload failed" });
+        }
+
+        // 🔹 Dynamically update the correct table
+        const validTables = ["admins", "students", "proctors"];
+        if (!validTables.includes(userType)) 
+            return res.status(400).json({ success: false, message: "Invalid user type" });
+
+        await db.execute(
+            `UPDATE ${userType} SET profilePhoto = ? WHERE id = ?`, 
+            [driveFile.profilePhoto, userId]
+        );
+
+        res.json({ 
+            success: true, 
+            message: "Profile photo uploaded successfully!",
+            fileUrl: driveFile.profilePhoto 
+        });
+
+    } catch (error) {
+        console.error("❌ Profile Photo Upload Error:", error);
+        res.status(500).json({ success: false, message: "Server error while uploading profile photo" });
+    }
+});
 
 
 
+// ✅ Upload Achievement API
 app.post('/uploadAchievement', upload.single('file'), async (req, res) => {
     try {
         const { student_id, title } = req.body;
         if (!title) return res.status(400).json({ success: false, message: "Title is required" });
 
         // 🔹 Upload file to Google Drive
-        const driveFile = await uploadToDrive(req.file, student_id, title);
+        const driveFile =await uploadAchievementToDrive(req.file, student_id, title);
         if (!driveFile || !driveFile.id) {
             return res.status(500).json({ success: false, message: "Drive upload failed" });
         }
@@ -1519,11 +1599,128 @@ app.post('/uploadAchievement', upload.single('file'), async (req, res) => {
     }
 });
 
+app.get("/getUserProfile", async (req, res) => {
+    try {
+        console.log(req.session);
+
+        // Check if session exists and has userId & role
+        if (!req.session || !req.session.userId || !req.session.role) {
+            return res.status(400).json({ message: "Session not found or incomplete" });
+        }
+
+        const { userId, role } = req.session;
+        let profilePhotoUrl = '';
+
+        let query = "";
+        let param = [];
+
+        if (role === "student") {
+            query = "SELECT profilePhoto FROM students WHERE student_id = ?";
+            param = [userId];
+        } else if (role === "proctor") {
+            query = "SELECT profilePhoto FROM proctors WHERE proctor_id = ?";
+            param = [userId];
+        } else if (role === "admin") {
+            query = "SELECT profilePhoto FROM admins WHERE admin_id = ?";
+            param = [userId];
+        } else {
+            return res.status(400).json({ message: "Invalid role" });
+        }
+
+        // Execute the query
+        const [rows] = await db.execute(query, param);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: `${role.charAt(0).toUpperCase() + role.slice(1)} not found` });
+        }
+
+        profilePhotoUrl = rows[0].profilePhoto;
+
+        // Convert Google Drive links to direct image links
+        if (profilePhotoUrl.includes("drive.google.com")) {
+            const match = profilePhotoUrl.match(/(?:id=|\/d\/)([^\/?]+)/);
+            if (match) {
+                profilePhotoUrl = `https://drive.google.com/uc?id=${match[1]}`;
+            }
+
+        }
+
+        res.json({ profilePhoto: profilePhotoUrl });
+
+    } catch (error) {
+        console.error("❌ Error fetching user profile:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+app.get('/getStudentProfile', async (req, res) => {
+    try {
+        const studentId = req.session.userId;
+        if (!studentId) {
+            return res.status(401).json({ message: "Unauthorized. Please log in again." });
+        }
+
+        const [student] = await db.execute("SELECT *FROM students WHERE student_id = ?", [studentId]);
+        if (student.length === 0) {
+            return res.status(404).json({ message: "Student not found." });
+        }
+
+        res.json(student[0]); // Send the proctor's details
+    } catch (error) {
+        console.error("Error fetching student profile:", error);
+        res.status(500).json({ message: "Error fetching student." });
+    }
+});
+app.post("/api/updateStudent", async (req, res) => {
+    try {
+        if (!req.session || !req.session.userId || req.session.role !== "student") {
+            return res.status(401).json({ error: "Unauthorized. Only students can update profiles." });
+        }
+
+        const userId = req.session.userId;
+        const updateFields = [];
+        const values = [];
+
+        // Allowed fields to update
+        const allowedFields = ["name", "email", "department", "batch", "regid", "phone_number", "status"];
+        
+        allowedFields.forEach(field => {
+            if (req.body[field]) {
+                updateFields.push(`${field} = ?`);
+                values.push(req.body[field]);
+            }
+        });
+
+        if (updateFields.length === 0) {
+            return res.status(400).json({ error: "No fields provided for update." });
+        }
+
+        values.push(userId); // Add student ID to the end
+
+        const sql = `UPDATE students SET ${updateFields.join(", ")} WHERE student_id = ?`;
+
+        db.query(sql, values, (err, result) => {
+            if (err) {
+                console.error("❌ Database error:", err);
+                return res.status(500).json({ error: "Database error" });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: "Student not found or no changes made." });
+            }
+
+            res.json({ message: "✅ Student profile updated successfully!" });
+        });
+
+    } catch (error) {
+        console.error("❌ Server error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
 
 
 
 //──────────────────────────────────Routes───────────────────────────────────────────────────
-
 router.use((req, res) => {
     res.status(404).json({ success: false, message: "API not found" });
 });

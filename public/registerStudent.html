@@ -11,6 +11,9 @@
         <h1 class="heading">Student Registration</h1>
         <div class="form register-form" id="student-register">
             <form id="registrationForm" action="/registerStudent" method="post" onsubmit="validateStudentForm(event)">
+                <label for="studentPhoto" class="form-label">Profile Photo</label>
+            <input type="file" id="studentPhoto" name="profilePhoto" class="input" accept="image/*" onchange="previewPhoto(event)" required />
+            <img id="photoPreview" src="#" alt="Profile Preview" style="display:none; width:100px; height:100px; margin-top:10px; border-radius:50%;" />
                 
                 <label for="name" class="form-label">Name</label>
                 <input type="text" id="name" name="name" class="input" placeholder="Name" required />
@@ -56,6 +59,6 @@
     </div>
 
     <script src="JS/registerStudent.js"></script>
-
+    
 </body>
 </html>

@@ -6,11 +6,69 @@
     <title>StudentsDashboard</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/proctorDashboard.css">
+    <link rel="stylesheet" href="css/studentDashboard.css">
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
 </head>
 <body>
+    <div id="profileContainer">
+        <img id="profilePhoto" src="/images/default-image.jpeg" alt="Profile Photo" class="profile-img">
+    </div>
+    
+    <!-- Sidebar -->
+    <!-- <div id="sidebar" class="sidebar">
+        <div class="sidebar-content">
+            <span class="close-btn" onclick="closeSidebar()">&times;</span>
+            <img id="sidebarProfilePhoto" src="/images/default-image.jpeg" alt="Profile Photo" class="profile-img">
+            <h2 id="studentName"></h2> 
+    
+            <p><strong>Email:</strong> <span class="studentEmail"></span></p>
+            <p><strong>Department:</strong> <span class="studentDept"></span></p>
+            <p><strong>Batch:</strong> <span class="studentBatch"></span></p>
+            <p><strong>Reg ID:</strong> <span class="studentRegID"></span></p>
+            <p><strong>Phone:</strong> <span class="studentPhone"></span></p>
+            <p><strong>Status:</strong> <span class="studentStatus"></span></p>
+            
+            
+            <button id="editProfile">Edit</button>
+        </div>
+    </div>
+     -->
+    <!-- Edit Profile Modal -->
+<!-- <div id="editProfileModal" class="modal">
+    <div class="modal-content">
+        <span class="close" id="closeEditModal">&times;</span>
+        <h2>Edit Profile</h2>
+        <form id="editProfileForm">
+            <label for="editName">Name:</label>
+            <input type="text" id="editName" name="name" required>
+        
+            <label for="editEmail">Email:</label>
+            <input type="email" id="editEmail" name="email" required>
+        
+            <label for="editDept">Department:</label>
+            <input type="text" id="editDept" name="department" required>
+        
+            <label for="editBatch">Batch:</label>
+            <input type="text" id="editBatch" name="batch" required>
+        
+            <label for="editRegID">Reg ID:</label>
+            <input type="text" id="editRegID" name="regid" required>
+        
+            <label for="editPhone">Phone:</label>
+            <input type="text" id="editPhone" name="phone_number" required>
+        
+            <label for="editStatus">Status:</label>
+            <input type="text" id="editStatus" name="status" required>
+        
+            <button type="submit" id="saveProfile">Save</button>
+        </form>
+        
+    </div>
+</div> -->
+
     <div id="student-workspace">
         
         <h2 id="student-info-heading"></h2>

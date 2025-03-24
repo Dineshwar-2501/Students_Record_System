@@ -12,6 +12,9 @@
     <div class="form register-form" id="proctor-register">
         <h2 class="heading">Proctor Registration</h2>
         <form id="proctorRegistrationForm" action="/registerProctor" method="post" onsubmit="validateProctorForm(event)">
+            <label for="proctorPhoto" class="form-label">Profile Photo</label>
+            <input type="file" id="proctorPhoto" name="profilePhoto" class="input" accept="image/*" onchange="previewPhoto(event)" required />
+            <img id="photoPreview" src="#" alt="Profile Preview" style="display:none; width:100px; height:100px; margin-top:10px; border-radius:50%;" />
 
             <label for="proctorName" class="form-label">Name</label>
             <input type="text" id="proctorName" name="name" class="input" placeholder="Name" required />
@@ -41,6 +44,6 @@
     </div>
 
     <script src="JS/registerProctor.js"></script>
-
+    
 </body>
 </html>

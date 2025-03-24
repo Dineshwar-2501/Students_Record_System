@@ -1,4 +1,4 @@
-const CACHE_NAME = "pwa-cache-v3"; // Updated version for fresh cache
+const CACHE_NAME = "pwa-cache-v3"; 
 const API_CACHE_NAME = "api-cache";
 const ASSETS_TO_CACHE = [
   "/",
@@ -12,37 +12,7 @@ const ASSETS_TO_CACHE = [
   "/login.html"
 ];
 
-// IndexedDB Config
-const dbName = "UserSessionDB";
-const storeName = "sessions";
-
-// Open IndexedDB & ensure session store exists
-const request = indexedDB.open(dbName, 1);
-
-request.onupgradeneeded = (event) => {
-    const db = event.target.result;
-    if (!db.objectStoreNames.contains(storeName)) {
-        db.createObjectStore(storeName, { keyPath: "id" });
-        console.log("✅ Object store created:", storeName);
-    }
-};
-
-request.onsuccess = () => {
-    console.log("📦 IndexedDB opened successfully");
-};
-
-// 🔹 Install Event - Cache essential assets
-self.addEventListener("install", (event) => {
-    console.log("🔹 Service Worker Installing...");
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            console.log("✅ Caching assets...");
-            return cache.addAll(ASSETS_TO_CACHE);
-        })
-    );
-});
-
-// 🔹 Activate Event - Clean old caches & claim clients
+// ✅ Ensure service worker takes control immediately
 self.addEventListener("activate", (event) => {
     console.log("🛠 Service Worker Activated");
     event.waitUntil(
@@ -57,76 +27,99 @@ self.addEventListener("activate", (event) => {
         })
     );
 
-    self.clients.claim().then(async () => {
+    event.waitUntil(self.clients.claim().then(async () => {
         const clients = await self.clients.matchAll({ type: "window" });
         clients.forEach(client => client.postMessage({ action: "forceRefresh" }));
-    });
+    }));
 });
 
-// 🔹 Fetch Event - Handle requests dynamically
+// ✅ Install Event - Cache essential assets
+self.addEventListener("install", (event) => {
+    console.log("🔹 Service Worker Installing...");
+    event.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => {
+            console.log("✅ Caching assets...");
+            return cache.addAll(ASSETS_TO_CACHE);
+        })
+    );
+});
+
+// ✅ Handle Messages Properly
+self.addEventListener("message", (event) => {
+    console.log("📩 Received message in service worker:", event.data);
+    if (event.data.action === "forceRefresh") {
+        self.clients.matchAll().then((clients) => {
+            clients.forEach(client => client.navigate(client.url));
+        });
+    }
+});
+
+// ✅ Fetch Event
 self.addEventListener("fetch", (event) => {
     const requestURL = new URL(event.request.url);
 
-    // ✅ Always bypass cache for login & logout
+    // 🔹 Bypass cache for login/logout
     if (requestURL.pathname.includes("/login.html") || requestURL.pathname.includes("/logout")) {
         event.respondWith(fetch(event.request, { cache: "no-store" }));
         return;
     }
 
-    // ✅ Bypass cache for admin dashboard (fetch fresh every time)
-    if (requestURL.pathname.includes("/adminDashboard")) {
+    // 🔹 Always fetch fresh dashboard pages
+    if (["/adminDashboard", "/proctorDashboard", "/studentDashboard"].some(path => requestURL.pathname.includes(path))) {
         event.respondWith(fetch(event.request));
         return;
     }
 
-    if (requestURL.pathname.includes("/proctorDashboard")) {
-        event.respondWith(fetch(event.request));
-        return;
-    }
-    if (requestURL.pathname.includes("/studentDashboard")) {
-        event.respondWith(fetch(event.request));
+    // 🔹 Google Drive Image Handling
+    if (requestURL.hostname.includes("drive.google.com")) {
+        const fileId = requestURL.searchParams.get("id");
+        if (fileId) {
+            event.respondWith(fetch(`https://lh3.googleusercontent.com/d/${fileId}`));
+        }
         return;
     }
 
-    // ✅ API Handling (Network-First)
+    // 🔹 Cache First for Images
+    if (event.request.destination === "image") {
+        event.respondWith(
+            caches.match(event.request).then((cachedImage) => {
+                return cachedImage || fetch(event.request).then((networkResponse) => {
+                    return caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, networkResponse.clone());
+                        return networkResponse;
+                    });
+                }).catch(() => caches.match("/offline-image.jpg"));
+            })
+        );
+        return;
+    }
+
+    // 🔹 Network First for API Calls
     if (requestURL.pathname.includes("/api/")) {
         event.respondWith(
             fetch(event.request)
                 .then((networkResponse) => {
-                    if (!networkResponse || networkResponse.type === "opaque") {
-                        return networkResponse; // Don't cache opaque responses
+                    if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === "opaque") {
+                        return networkResponse;
                     }
-                    const clonedResponse = networkResponse.clone();
-                    caches.open(API_CACHE_NAME).then((cache) => {
-                        cache.put(event.request, clonedResponse);
+                    return caches.open(API_CACHE_NAME).then((cache) => {
+                        cache.put(event.request, networkResponse.clone());
+                        return networkResponse;
                     });
-                    return networkResponse;
                 })
                 .catch(() => caches.match(event.request) || caches.match("/offline.html"))
         );
         return;
     }
 
-    // ✅ Static Assets Handling (Cache-First)
+    // 🔹 Cache First for Static Files
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
-            return (
-                cachedResponse ||
-                fetch(event.request).catch(() => {
-                    if (event.request.destination === "document") {
-                        return caches.match("/offline.html"); // Serve offline page if document request fails
-                    }
-                })
-            );
+            return cachedResponse || fetch(event.request).catch(() => {
+                if (event.request.destination === "document") {
+                    return caches.match("/offline.html");
+                }
+            });
         })
     );
-});
-
-// 🔹 Listen for messages from client (used for force refresh)
-self.addEventListener("message", (event) => {
-    if (event.data.action === "forceRefresh") {
-        self.clients.matchAll().then((clients) => {
-            clients.forEach(client => client.navigate(client.url));
-        });
-    }
 });
