@@ -1,6 +1,6 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
-const db = mysql.createPool(
+const pool = mysql.createPool(
     {
     uri: process.env.MYSQL_URL,
     waitForConnections: true,
@@ -31,4 +31,4 @@ async () => {
     }
 };
 
-module.exports = db;
+module.exports = pool;

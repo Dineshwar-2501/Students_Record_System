@@ -121,7 +121,7 @@ app.use("/", studentRoutes); // Use student routes
 app.use("/uploads", express.static(path.join(__dirname, 'uploads')));
 app.use(proctorRoutes);
 app.use("/JS", express.static(path.join(__dirname, "public/JS")));
-
+app.use("/utils", express.static(path.join(__dirname, "utils")));
 
 
 const allowedOrigins = [
