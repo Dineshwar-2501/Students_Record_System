@@ -23,7 +23,6 @@ const saltRounds = 10;
 const app = express();
 const studentRoutes = require("./routes/StudentRoutes");
 const rateLimiter = require('express-rate-limit'); 
-const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
 const { uploadProfilePhotoToDrive, uploadAchievementToDrive,auth } = require("./config/config");
 const PgSession = require("connect-pg-simple")(session);
@@ -119,7 +118,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/", studentRoutes); // Use student routes
 app.use("/uploads", express.static(path.join(__dirname, 'uploads')));
-app.use(proctorRoute);
+app.use(proctorRoutes);
 app.use("/JS", express.static(path.join(__dirname, "public/JS")));
 app.use("/utils", express.static(path.join(__dirname, "utils")));
 app.use("/api", proctorRoute);
@@ -164,18 +163,11 @@ function checkAuth(req, res, next) {
 
 async function updateStudentGpaCgpa(studentId) {
     try {
-        const response = await fetch("/api/update-gpa-cgpa", {
+        const response = await fetch(`${window.location.origin}/api/update-gpa-cgpa`, { // ✅ Fix API URL
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ studentId }),
         });
-
-        // 🔴 Ensure response is valid JSON
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            let errorText = await response.text();
-            throw new Error(`Invalid response: ${errorText}`);
-        }
 
         const data = await response.json();
         if (data.success) {
@@ -190,6 +182,7 @@ async function updateStudentGpaCgpa(studentId) {
         alert("Server error occurred.");
     }
 }
+
 
 
 app.get("/*.js", (req, res, next) => {

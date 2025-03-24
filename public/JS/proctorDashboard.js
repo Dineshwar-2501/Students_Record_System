@@ -1,17 +1,10 @@
 async function updateStudentGpaCgpa(studentId) {
     try {
-        const response = await fetch("/api/update-gpa-cgpa", {
+        const response = await fetch(`${window.location.origin}/api/update-gpa-cgpa`, { // ✅ Fix API URL
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ studentId }),
         });
-
-        // 🔴 Ensure response is valid JSON
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            let errorText = await response.text();
-            throw new Error(`Invalid response: ${errorText}`);
-        }
 
         const data = await response.json();
         if (data.success) {
