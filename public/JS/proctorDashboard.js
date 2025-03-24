@@ -6,16 +6,27 @@ async function updateStudentGpaCgpa(studentId) {
             body: JSON.stringify({ studentId }),
         });
 
+        // 🔴 Ensure response is valid JSON
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            let errorText = await response.text();
+            throw new Error(`Invalid response: ${errorText}`);
+        }
+
         const data = await response.json();
         if (data.success) {
             console.log("✅ GPA & CGPA updated successfully!");
+            alert("GPA & CGPA updated successfully!");
         } else {
             console.error("❌ Error updating GPA & CGPA:", data.message);
+            alert("Failed to update GPA & CGPA.");
         }
     } catch (error) {
         console.error("❌ Failed to update GPA & CGPA:", error);
+        alert("Server error occurred.");
     }
 }
+
 
 
 function showLoader() {

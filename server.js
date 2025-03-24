@@ -28,6 +28,7 @@ const proctorRoutes = require('./routes/proctorRoutes');
 const { uploadProfilePhotoToDrive, uploadAchievementToDrive,auth } = require("./config/config");
 const PgSession = require("connect-pg-simple")(session);
 const { Pool } = require("pg");
+const proctorRoutes = require("./routes/proctor");
 
 // // ✅ PostgreSQL Connection (Make sure Railway's DATABASE_URL is set correctly)
 const pgPool = new Pool({
@@ -114,14 +115,14 @@ app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/", studentRoutes); // Use student routes
 app.use("/uploads", express.static(path.join(__dirname, 'uploads')));
 app.use(proctorRoutes);
 app.use("/JS", express.static(path.join(__dirname, "public/JS")));
 app.use("/utils", express.static(path.join(__dirname, "utils")));
-
+app.use("/api", proctorRoutes);
 
 const allowedOrigins = [
   "http://localhost:3000",  // Local frontend
@@ -169,16 +170,28 @@ async function updateStudentGpaCgpa(studentId) {
             body: JSON.stringify({ studentId }),
         });
 
+        // 🔴 Ensure response is valid JSON
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            let errorText = await response.text();
+            throw new Error(`Invalid response: ${errorText}`);
+        }
+
         const data = await response.json();
         if (data.success) {
             console.log("✅ GPA & CGPA updated successfully!");
+            alert("GPA & CGPA updated successfully!");
         } else {
             console.error("❌ Error updating GPA & CGPA:", data.message);
+            alert("Failed to update GPA & CGPA.");
         }
     } catch (error) {
         console.error("❌ Failed to update GPA & CGPA:", error);
+        alert("Server error occurred.");
     }
 }
+
+
 app.get("/*.js", (req, res, next) => {
     res.type("application/javascript"); // ✅ Forces correct MIME type
     next();
