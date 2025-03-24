@@ -140,7 +140,7 @@ $(document).ready(async function () {
             const response = await fetch("/assignStudentMarks", { method: "POST" });
             if (response.ok) {
                 const data = await response.json();
-                console.log(`✅ Marks assigned! ${data.message}`);
+                alert(`✅ Marks assigned! ${data.message}`);
                 
                 // Reload the page after successful update
                 location.reload();
@@ -237,7 +237,7 @@ $(document).ready(async function () {
             const result = await response.json();
             if (!response.ok) throw new Error(result.message || "Update failed");
             
-            console.log(result.message || 'Profile updated successfully.');
+            alert(result.message || 'Profile updated successfully.');
             hideLoader();
             $('#profile-modal').hide();
             loadProctorProfile(); // Reload profile data
@@ -283,7 +283,7 @@ document.getElementById('uploadCSVForm').addEventListener('submit', function (ev
         processData: false,
         contentType: false,
         success: function (response) {
-            console.log(response.message || "Marks uploaded successfully!"); 
+            alert(response.message || "Marks uploaded successfully!"); 
             location.reload(); // 🔹 Refresh the page after success
             hideLoader();
         },
@@ -508,13 +508,13 @@ async function loadStudentWorkspace(studentId) {
         
                 const result = await response.json();
                 if (response.ok) {
-                    console.log('Marks updated successfully!');
+                    alert('Marks updated successfully!');
                     console.log("✅ Update Success:", result);
                     
                     // ✅ Call updateGpaCgpa AFTER marks are updated
                     await updateStudentGpaCgpa(regid);
 
-                    console.log("✅ GPA & CGPA updated successfully!");
+                    alert("✅ GPA & CGPA updated successfully!");
                     window.location.reload;
                     hideLoader();
                 } else {

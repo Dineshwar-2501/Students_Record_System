@@ -23,7 +23,7 @@ $(document).ready(function () {
         $(formId).on('submit', function (event) {
             event.preventDefault();
             let formData = new FormData(this);
-
+            showLoader();
             $.ajax({
                 type: 'POST',
                 url: url,
@@ -33,9 +33,11 @@ $(document).ready(function () {
                 success: function () {
                     alert('Data imported successfully.');
                     $('.modal').hide();
+                    hideLoader();
                 },
                 error: function (xhr) {
                     alert(xhr.responseText || 'Error importing data.');
+                    hideLoader();
                 }
             });
         });
@@ -49,13 +51,15 @@ $(document).ready(function () {
         $(formId).on('submit', function (event) {
             event.preventDefault();
             const formData = $(this).serialize();
-
+            showLoader();
             $.post(url, formData)
                 .done(response => {
                     alert(response.message || successMessage);
                     $('.modal').hide();
+                    hideLoader();
                 })
                 .fail(() => alert('Error processing request.'));
+                hideLoader();
         });
     }
 
@@ -67,18 +71,25 @@ $(document).ready(function () {
 
 
     // Open Assign Subjects Modal
-    $('#assign-subjects-button').click(() => {
-        fetchAdminDepartment();
-        
-        // Fetch batches, then show modal only when data is loaded
-        fetchBatchesByDepartment();
-        
-        // 🔥 Ensure modal shows AFTER data is updated
+$('#assign-subjects-button').click(() => {
+    showLoader(); // 🔥 Show loader before fetching data
+
+    // Fetch admin department
+    fetchAdminDepartment();
+
+    // Fetch batches by department, then hide loader and show modal
+    fetchBatchesByDepartment().then(() => {
         setTimeout(() => {
             console.log("Opening modal after ensuring dropdown is populated.");
             $('#assign-subjects-modal').show();
-        }, 200);  // 🔥 Delay ensures dropdown is populated first
+            hideLoader(); // 🔥 Hide loader once data is ready
+        }, 200);  
+    }).catch(error => {
+        console.error("Error fetching batches:", error);
+        hideLoader(); // 🔥 Hide loader even if there's an error
     });
+});
+
     
 
     // Close Modal
@@ -88,6 +99,7 @@ $(document).ready(function () {
 
     // Fetch Admin's Department from Session (if not already fetched)
     function fetchAdminDepartment() {
+        showLoader();
         if (adminDepartment) return; // Avoid multiple requests if already fetched
 
         $.ajax({
@@ -96,15 +108,18 @@ $(document).ready(function () {
             success: function (data) {
                 adminDepartment = data.department;
                 $('#admin-department').text(adminDepartment);
+                hideLoader();
             },
             error: function () {
                 alert("Error fetching admin department.");
+                hideLoader();
             }
         });
     }
 
     // Fetch Batches for Admin's Department
     function fetchBatchesByDepartment() {
+        
         $.ajax({
             type: 'GET',
             url: '/getBatchesByDepartment',

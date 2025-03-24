@@ -19,19 +19,19 @@
   "display": "standalone",
   "screenshots": [
     {
-      "src": "/icons/Screenshot5.png",
-      "sizes": "1920x1080",
+      "src": "/icons/Admin.png",
+      "sizes": "1405x819",
       "type": "image/png",
       "form_factor": "wide"
     },
     {
-      "src": "/icons/S.jpg",
-      "sizes": "360x640",
+      "src": "/icons/Record.png",
+      "sizes": "1895x896",
       "type": "image/jpeg"
     },
     {
-      "src": "/icons/ss.jpg",
-      "sizes": "1920x1080",
+      "src": "/icons/Login.png",
+      "sizes": "1432x787",
       "type": "image/jpeg"
     }
   ]
