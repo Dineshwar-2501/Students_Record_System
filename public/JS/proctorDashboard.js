@@ -1,4 +1,22 @@
-const updateGpaCgpa = require("../utils/updateGpaCgpa");
+async function updateStudentGpaCgpa(studentId) {
+    try {
+        const response = await fetch("/api/update-gpa-cgpa", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            console.log("✅ GPA & CGPA updated successfully!");
+        } else {
+            console.error("❌ Error updating GPA & CGPA:", data.message);
+        }
+    } catch (error) {
+        console.error("❌ Failed to update GPA & CGPA:", error);
+    }
+}
+
 
 function showLoader() {
     const loaderOverlay = document.getElementById('loader-overlay');
