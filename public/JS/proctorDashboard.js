@@ -513,7 +513,9 @@ async function loadStudentWorkspace(studentId) {
                     
                     // ✅ Call updateGpaCgpa AFTER marks are updated
                     await updateStudentGpaCgpa(regid);
+
                     console.log("✅ GPA & CGPA updated successfully!");
+                    window.location.reload;
                     hideLoader();
                 } else {
                     hideLoader();

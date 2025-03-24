@@ -38,10 +38,10 @@ document.addEventListener("DOMContentLoaded", () => {
     studentButton.addEventListener("click", () => selectRole("student", studentButton));
 
     // ✅ Password visibility toggle
-    togglePassword.addEventListener("click", () => {
-        passwordInput.type = passwordInput.type === "password" ? "text" : "password";
-        togglePassword.textContent = passwordInput.type === "password" ? "👁️" : "🙈";
-    });
+    // togglePassword.addEventListener("click", () => {
+    //     passwordInput.type = passwordInput.type === "password" ? "text" : "password";
+    //     togglePassword.textContent = passwordInput.type === "password" ? "👁️" : "🙈";
+    // });
 
     // ✅ Handle login form submission
     loginForm.addEventListener("submit", async (event) => {
