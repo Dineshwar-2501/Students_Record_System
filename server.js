@@ -26,7 +26,8 @@ const rateLimiter = require('express-rate-limit');
 const updateGpaCgpa = require("./utils/updateGpaCgpa");
 const proctorRoutes = require('./routes/proctorRoutes');
 const { uploadProfilePhotoToDrive, uploadAchievementToDrive,auth } = require("./config/config");
-
+const PgSession = require("connect-pg-simple")(session);
+const { Pool } = require("pg");
 
 
 if (!fs.existsSync('uploads')) {
@@ -92,18 +93,32 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Internal server error' });
 });
 
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL, // Railway provides this
+  });
+  
+  app.use(
+    session({
+      store: new PgSession({ pool }),
+      secret: process.env.SESSION_SECRET ,
+      resave: false,
+      saveUninitialized: false,
+      cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 },
+    })
+  );
 // Session setup
 
-app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    cookie: { 
-        secure: false,  // Set to true if using HTTPS
-        httpOnly: true, 
-        maxAge: 24 * 60 * 60 * 1000 //1day
-    }
-}));
+// app.use(session({
+//     secret: process.env.SESSION_SECRET,
+//     resave: false,
+//     saveUninitialized: true,
+//     cookie: { 
+//         secure: false,  // Set to true if using HTTPS
+//         httpOnly: true, 
+//         maxAge: 24 * 60 * 60 * 1000 //1day
+//     }
+// }));
 
 
 function checkAuth(req, res, next) {
