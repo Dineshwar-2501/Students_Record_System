@@ -702,3 +702,21 @@ async function loadStudentWorkspace(studentId) {
         }
     });
     
+    document.getElementById('notifyBtn').addEventListener('click', async () => {
+        const semester = prompt("Enter which semester result is published (e.g. 5th, 6th):");
+        if (!semester) return;
+      
+        const confirmSend = confirm(`Notify all assigned students’ parents about Semester ${semester}?`);
+        if (!confirmSend) return;
+      
+        const res = await fetch('/proctor/notifyParents', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ semester })
+        });
+      
+        const data = await res.json();
+        alert(data.message || "Notifications sent.");
+      });

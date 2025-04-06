@@ -29,6 +29,9 @@ const PgSession = require("connect-pg-simple")(session);
 const { Pool } = require("pg");
 const proctorRoute = require("./routes/proctor");
 const updateGpaCgpa = require("./utils/updateGpaCgpa"); 
+const twilioWebhook = require('./routes/twiliowebhook');
+
+
 
 
 // // ✅ PostgreSQL Connection (Make sure Railway's DATABASE_URL is set correctly)
@@ -124,6 +127,9 @@ app.use(proctorRoutes);
 app.use("/JS", express.static(path.join(__dirname, "public/JS")));
 app.use("/utils", express.static(path.join(__dirname, "utils")));
 app.use("/api", proctorRoute);
+app.use('/proctor', proctorRoutes);
+app.use('/twilio', twilioWebhook);
+
 
 const allowedOrigins = [
   "http://localhost:3000",  // Local frontend
